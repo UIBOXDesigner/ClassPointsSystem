@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_PAGES: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +27,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
       - name: Install dependencies
         run: npm ci
       - name: Build static site
