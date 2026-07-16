@@ -103,6 +103,20 @@ type SeasonActivity = {
   goals: ActivityGoal[];
 };
 
+type Recommendation = {
+  title: string;
+  reason: string;
+  action: string;
+  priority: "高" | "中" | "低";
+  taskId?: string;
+};
+
+type AuditItem = {
+  learner: Learner;
+  level: "高" | "中" | "低";
+  reasons: string[];
+};
+
 type SectionId =
   | "overview"
   | "learners"
@@ -111,6 +125,8 @@ type SectionId =
   | "shop"
   | "activities"
   | "reports"
+  | "insights"
+  | "audit"
   | "ledger"
   | "teacher"
   | "admin";
@@ -380,6 +396,13 @@ const MESSAGE_TEMPLATES = [
   },
 ];
 
+const AUDIT_RULES = [
+  { title: "同一任务去重", description: "同一学员同一任务在一个周期内只允许计分一次。" },
+  { title: "教师奖励上限", description: "手动奖励建议每名学员每周不超过 30 成长值。" },
+  { title: "异常增长预警", description: "单名学员累计成长值显著高于班级均值时进入复核。" },
+  { title: "补救优先", description: "普通学习中断不扣历史积分，优先发布补救任务。" },
+];
+
 const NAV_ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "overview", label: "运营总览", hint: "学习状态与成长闭环" },
   { id: "learners", label: "学员管理", hint: "新增、搜索、编辑学员" },
@@ -388,6 +411,8 @@ const NAV_ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "shop", label: "奖励商城", hint: "虚拟、权益、实体奖励" },
   { id: "activities", label: "运营活动", hint: "赛季、共同目标、通知" },
   { id: "reports", label: "家长报告", hint: "周报、证书、打印" },
+  { id: "insights", label: "智能建议", hint: "任务推荐、干预策略" },
+  { id: "audit", label: "风控审计", hint: "异常检测、规则模拟" },
   { id: "ledger", label: "积分流水", hint: "成长值与星币记录" },
   { id: "teacher", label: "教师端", hint: "批量计分与预警" },
   { id: "admin", label: "管理看板", hint: "规则、成本、风控" },
@@ -719,6 +744,82 @@ function csvCell(value: string | number) {
   return `"${String(value).replaceAll('"', '""')}"`;
 }
 
+function taskById(taskId: string) {
+  return TASKS.find((task) => task.id === taskId);
+}
+
+function recommendationsForLearner(learner: Learner): Recommendation[] {
+  const recommendations: Recommendation[] = [];
+  if (learner.attendanceRate < 88) {
+    recommendations.push({
+      title: "恢复到课节奏",
+      reason: "最近出勤率低于 88%，建议先恢复稳定参与。",
+      action: "发布一次准时到课目标，并配合鼓励提醒。",
+      priority: "高",
+      taskId: "on-time-class",
+    });
+  }
+  if (learner.homeworkRate < 80) {
+    recommendations.push({
+      title: "作业补救闭环",
+      reason: "作业完成率偏低，直接追加新任务容易造成压力。",
+      action: "优先完成错题订正或补交任务，再恢复正常作业节奏。",
+      priority: "高",
+      taskId: "remedy-corrections",
+    });
+  }
+  if (learner.quizTrend < 0) {
+    recommendations.push({
+      title: "阶段测验复盘",
+      reason: "测验表现下降，适合用复盘任务替代扣分。",
+      action: "安排 10 分钟复习和一次教师点评，观察下一次趋势。",
+      priority: "中",
+      taskId: "review-task",
+    });
+  }
+  if (!learner.completedTasks.includes("active-answer")) {
+    recommendations.push({
+      title: "首次课堂表达",
+      reason: "尚未解锁勇敢发言徽章，可用低门槛互动建立信心。",
+      action: "设置一次可提前准备的问题，让学员完成首次回答。",
+      priority: "中",
+      taskId: "active-answer",
+    });
+  }
+  if (!learner.completedTasks.includes("team-project")) {
+    recommendations.push({
+      title: "加入小组协作",
+      reason: "合作值还有提升空间，团队任务可降低单人竞争压力。",
+      action: "分配一个小组展示或同伴互助任务。",
+      priority: "低",
+      taskId: "team-project",
+    });
+  }
+  if (recommendations.length === 0) {
+    recommendations.push({
+      title: "保持进阶挑战",
+      reason: "当前学习状态稳定，可以安排更有成就感的阶段挑战。",
+      action: "推进阶段测验或作品展示，帮助宠物进入下一阶段。",
+      priority: "低",
+      taskId: "unit-test",
+    });
+  }
+  return recommendations.slice(0, 4);
+}
+
+function auditLearners(learners: Learner[]): AuditItem[] {
+  const averageGrowth = learners.reduce((sum, learner) => sum + learner.account.totalGrowth, 0) / learners.length;
+  return learners.map((learner) => {
+    const reasons: string[] = [];
+    if (learner.account.totalGrowth > averageGrowth * 1.45) reasons.push("成长值显著高于班级均值");
+    if (learner.account.stars > learner.account.totalStars) reasons.push("星币余额大于累计获得");
+    if (learner.ledger.some((item) => item.growthDelta >= 30 || item.starsDelta >= 15)) reasons.push("存在高额单次积分流水");
+    if (riskLabels(learner).length >= 2) reasons.push("学习预警项目较多，需要教师跟进");
+    const level = reasons.length >= 2 ? "高" : reasons.length === 1 ? "中" : "低";
+    return { learner, level, reasons: reasons.length ? reasons : ["暂无明显异常"] };
+  });
+}
+
 export default function Home() {
   const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
@@ -995,6 +1096,9 @@ export default function Home() {
               <button className="secondary-button" onClick={() => setActiveSection("reports")}>
                 查看家长报告
               </button>
+              <button className="secondary-button" onClick={() => setActiveSection("insights")}>
+                查看智能建议
+              </button>
             </div>
           </div>
 
@@ -1080,6 +1184,14 @@ export default function Home() {
 
           {activeSection === "reports" && (
             <ReportsPanel learner={selectedLearner} petType={selectedPet} badges={selectedBadges} />
+          )}
+
+          {activeSection === "insights" && (
+            <InsightsPanel learner={selectedLearner} onCompleteTask={completeTask} />
+          )}
+
+          {activeSection === "audit" && (
+            <AuditPanel learners={learners} />
           )}
 
           {activeSection === "ledger" && <LedgerPanel learner={selectedLearner} />}
@@ -1861,6 +1973,156 @@ function ReportsPanel({
           </div>
         </article>
       </div>
+    </div>
+  );
+}
+
+
+function InsightsPanel({
+  learner,
+  onCompleteTask,
+}: {
+  learner: Learner;
+  onCompleteTask: (task: Task) => void;
+}) {
+  const recommendations = recommendationsForLearner(learner);
+  const riskCount = riskLabels(learner).length;
+  const nextAction = recommendations[0];
+
+  return (
+    <div className="panel-stack">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">智能建议</span>
+          <h2>根据学员状态推荐下一步任务</h2>
+        </div>
+        <p>当前为规则驱动的智能建议，可作为教师决策辅助，最终仍由老师确认。</p>
+      </div>
+
+      <section className="summary-grid compact">
+        <MetricCard label="干预优先级" value={nextAction.priority} detail={nextAction.title} tone={nextAction.priority === "高" ? "amber" : "blue"} />
+        <MetricCard label="预警数量" value={riskCount} detail="出勤、作业、趋势、连续学习" tone={riskCount > 0 ? "amber" : "green"} />
+        <MetricCard label="推荐任务" value={recommendations.length} detail="最多显示 4 条" tone="purple" />
+        <MetricCard label="可执行任务" value={recommendations.filter((item) => item.taskId && !learner.completedTasks.includes(item.taskId)).length} detail="可一键模拟完成" tone="green" />
+      </section>
+
+      <div className="recommendation-grid">
+        {recommendations.map((recommendation) => {
+          const linkedTask = recommendation.taskId ? taskById(recommendation.taskId) : undefined;
+          const done = Boolean(linkedTask && learner.completedTasks.includes(linkedTask.id));
+          return (
+            <article className={`recommendation-card priority-${recommendation.priority}`} key={recommendation.title}>
+              <div className="recommendation-head">
+                <span>{recommendation.priority}优先级</span>
+                {linkedTask && <small>{linkedTask.type}任务</small>}
+              </div>
+              <h3>{recommendation.title}</h3>
+              <p>{recommendation.reason}</p>
+              <div className="action-box">建议动作：{recommendation.action}</div>
+              {linkedTask && (
+                <button className="primary-button small-button" disabled={done} onClick={() => onCompleteTask(linkedTask)}>
+                  {done ? "任务已完成" : `执行：${linkedTask.title}`}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      <article className="card">
+        <h3>个性化激励策略</h3>
+        <div className="strategy-list">
+          <div><strong>反馈方式</strong><span>{learner.streak >= 5 ? "强化连续学习成就，使用进阶挑战。" : "先恢复短周期反馈，使用每日小任务。"}</span></div>
+          <div><strong>奖励节奏</strong><span>{learner.account.stars >= 60 ? "引导兑换学习权益，降低实体奖励成本。" : "优先发放小额星币，建立即时反馈。"}</span></div>
+          <div><strong>家长沟通</strong><span>{riskCount > 0 ? "建议发送过程型周报，强调补救路径。" : "建议展示徽章和宠物阶段，强化正向认可。"}</span></div>
+        </div>
+      </article>
+    </div>
+  );
+}
+
+function AuditPanel({ learners }: { learners: Learner[] }) {
+  const [lessonCount, setLessonCount] = useState(2);
+  const [homeworkCount, setHomeworkCount] = useState(2);
+  const [reviewCount, setReviewCount] = useState(3);
+  const [interactionCount, setInteractionCount] = useState(3);
+  const auditItems = auditLearners(learners);
+  const highRiskCount = auditItems.filter((item) => item.level === "高").length;
+  const simulatedGrowth = lessonCount * 10 + homeworkCount * 10 + reviewCount * 6 + interactionCount * 3;
+  const simulatedStars = lessonCount * 5 + homeworkCount * 5 + reviewCount * 3 + interactionCount * 2;
+
+  return (
+    <div className="panel-stack">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">风控审计</span>
+          <h2>积分异常检测与规则模拟器</h2>
+        </div>
+        <p>用可解释规则识别异常，不直接处罚学员，先进入教师复核。</p>
+      </div>
+
+      <section className="summary-grid compact">
+        <MetricCard label="高风险记录" value={highRiskCount} detail="需管理员复核" tone={highRiskCount > 0 ? "amber" : "green"} />
+        <MetricCard label="审计人数" value={auditItems.length} detail="当前试点班" tone="blue" />
+        <MetricCard label="模拟成长值" value={simulatedGrowth} detail="按输入行为计算" tone="purple" />
+        <MetricCard label="模拟星币" value={simulatedStars} detail="用于奖励成本估算" tone="amber" />
+      </section>
+
+      <div className="two-column">
+        <article className="card">
+          <h3>积分规则模拟器</h3>
+          <div className="simulator-grid">
+            <label><span>完成课程数</span><input type="number" min="0" max="12" value={lessonCount} onChange={(event) => setLessonCount(Number(event.target.value))} /></label>
+            <label><span>按时作业数</span><input type="number" min="0" max="12" value={homeworkCount} onChange={(event) => setHomeworkCount(Number(event.target.value))} /></label>
+            <label><span>复习任务数</span><input type="number" min="0" max="20" value={reviewCount} onChange={(event) => setReviewCount(Number(event.target.value))} /></label>
+            <label><span>课堂互动数</span><input type="number" min="0" max="20" value={interactionCount} onChange={(event) => setInteractionCount(Number(event.target.value))} /></label>
+          </div>
+          <div className="simulation-result">
+            <strong>本周期预计发放</strong>
+            <span>{simulatedGrowth} 成长值 / {simulatedStars} 星币</span>
+          </div>
+        </article>
+
+        <article className="card">
+          <h3>防刷规则</h3>
+          <div className="audit-rule-list">
+            {AUDIT_RULES.map((rule) => (
+              <div key={rule.title}>
+                <strong>{rule.title}</strong>
+                <span>{rule.description}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      <article className="card table-card">
+        <h3>学员审计列表</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>学员</th>
+              <th>风险等级</th>
+              <th>审计原因</th>
+              <th>成长值</th>
+              <th>星币</th>
+              <th>流水数</th>
+            </tr>
+          </thead>
+          <tbody>
+            {auditItems.map((item) => (
+              <tr key={item.learner.id}>
+                <td>{item.learner.name}</td>
+                <td><span className={`audit-level level-${item.level}`}>{item.level}</span></td>
+                <td>{item.reasons.join("；")}</td>
+                <td>{item.learner.account.totalGrowth}</td>
+                <td>{item.learner.account.stars}</td>
+                <td>{item.learner.ledger.length}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </article>
     </div>
   );
 }

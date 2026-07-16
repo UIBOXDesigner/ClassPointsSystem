@@ -34,6 +34,8 @@ test("server-renders the learning pet MVP", async () => {
   assert.match(html, /任务中心/);
   assert.match(html, /宠物培养/);
   assert.match(html, /奖励商城/);
+  assert.match(html, /智能建议/);
+  assert.match(html, /风控审计/);
   assert.match(html, /教师端/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
