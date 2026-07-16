@@ -118,6 +118,7 @@ type AuditItem = {
 };
 
 type SectionId =
+  | "roleHome"
   | "overview"
   | "learners"
   | "tasks"
@@ -406,6 +407,7 @@ const AUDIT_RULES = [
 ];
 
 const SECTION_META: Record<SectionId, { label: string; hint: string }> = {
+  roleHome: { label: "入口首页", hint: "核心数据与快捷操作" },
   overview: { label: "成长概览", hint: "当前学习状态" },
   learners: { label: "学员管理", hint: "新增、搜索、编辑学员" },
   tasks: { label: "今日任务", hint: "签到、作业、复习" },
@@ -436,8 +438,8 @@ const ROLE_PORTALS: {
     badge: "上课管理",
     title: "教师只处理学员、计分、建议和班级运营。",
     description: "适合课前查看预警，课中快速发放积分，课后跟进补救任务和成长建议。",
-    entrySection: "teacher",
-    sections: ["teacher", "learners", "insights", "activities", "audit", "admin"],
+    entrySection: "roleHome",
+    sections: ["roleHome", "teacher", "learners", "insights", "activities", "audit", "admin"],
     actions: ["发放积分", "管理学员", "查看建议"],
   },
   {
@@ -446,8 +448,8 @@ const ROLE_PORTALS: {
     badge: "学习养成",
     title: "学生只看任务、宠物、奖励和自己的积分。",
     description: "减少后台感，学员进入后可以直接完成今日任务、培养宠物、兑换奖励。",
-    entrySection: "tasks",
-    sections: ["overview", "tasks", "pet", "shop", "ledger"],
+    entrySection: "roleHome",
+    sections: ["roleHome", "overview", "tasks", "pet", "shop", "ledger"],
     actions: ["完成任务", "培养宠物", "兑换奖励"],
   },
   {
@@ -456,8 +458,8 @@ const ROLE_PORTALS: {
     badge: "成长查看",
     title: "家长只看过程报告、成长变化和老师反馈。",
     description: "隐藏复杂运营操作，重点呈现出勤、作业、进步、宠物成长和阶段报告。",
-    entrySection: "reports",
-    sections: ["reports", "overview", "ledger"],
+    entrySection: "roleHome",
+    sections: ["roleHome", "reports", "overview", "ledger"],
     actions: ["看周报", "看成长", "看明细"],
   },
 ];
@@ -868,7 +870,7 @@ export default function Home() {
   const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
   const [activePortal, setActivePortal] = useState<PortalRole>("student");
-  const [activeSection, setActiveSection] = useState<SectionId>("tasks");
+  const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
 
@@ -1200,6 +1202,19 @@ export default function Home() {
         </aside>
 
         <section className="panel-area">
+          {activeSection === "roleHome" && (
+            <RoleHomePanel
+              portal={activePortalConfig}
+              learner={selectedLearner}
+              petType={selectedPet}
+              learners={learners}
+              badges={selectedBadges}
+              risks={selectedRisks}
+              classTaskRate={classTaskRate}
+              onNavigate={setActiveSection}
+            />
+          )}
+
           {activeSection === "overview" && (
             <OverviewPanel
               learner={selectedLearner}
@@ -1282,7 +1297,155 @@ export default function Home() {
           )}
         </section>
       </div>
+
+      <nav className="bottom-role-nav" aria-label={`${activePortalConfig.label}底部导航`}>
+        {visibleNavItems.slice(0, 5).map((item) => (
+          <button
+            key={item.id}
+            className={activeSection === item.id ? "active" : ""}
+            onClick={() => setActiveSection(item.id)}
+          >
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
     </main>
+  );
+}
+
+function RoleHomePanel({
+  portal,
+  learner,
+  petType,
+  learners,
+  badges,
+  risks,
+  classTaskRate,
+  onNavigate,
+}: {
+  portal: (typeof ROLE_PORTALS)[number];
+  learner: Learner;
+  petType: PetType;
+  learners: Learner[];
+  badges: typeof BADGES;
+  risks: string[];
+  classTaskRate: number;
+  onNavigate: (section: SectionId) => void;
+}) {
+  const portalActions: Record<PortalRole, { icon: string; title: string; desc: string; section: SectionId }[]> = {
+    teacher: [
+      { icon: "✅", title: "课堂计分", desc: "快速发放课程、作业、表扬奖励", section: "teacher" },
+      { icon: "👥", title: "学员管理", desc: "新增、搜索、编辑和切换学员", section: "learners" },
+      { icon: "💡", title: "智能建议", desc: "查看补救任务和干预策略", section: "insights" },
+      { icon: "🛡️", title: "风控审计", desc: "复核异常积分和规则模拟", section: "audit" },
+    ],
+    student: [
+      { icon: "🎯", title: "今日任务", desc: "签到、作业、复习、互动", section: "tasks" },
+      { icon: petType.emoji, title: "我的宠物", desc: "喂养、互动、查看成长属性", section: "pet" },
+      { icon: "🛒", title: "奖励兑换", desc: "用星币兑换装扮和权益", section: "shop" },
+      { icon: "📒", title: "积分明细", desc: "查看每一笔成长值和星币", section: "ledger" },
+    ],
+    parent: [
+      { icon: "📊", title: "成长报告", desc: "查看周报、证书和教师寄语", section: "reports" },
+      { icon: "🌱", title: "成长概览", desc: "了解出勤、作业和进步趋势", section: "overview" },
+      { icon: "📒", title: "积分明细", desc: "查看奖励来源和学习过程", section: "ledger" },
+      { icon: "🏅", title: "徽章成就", desc: "关注孩子阶段性正向反馈", section: "reports" },
+    ],
+  };
+
+  const stats =
+    portal.id === "teacher"
+      ? [
+          { label: "班级学员", value: learners.length, detail: "当前试点班", tone: "blue" },
+          { label: "任务完成率", value: `${classTaskRate}%`, detail: "全班综合进度", tone: "green" },
+          { label: "待关注", value: risks.length, detail: "当前学员预警", tone: risks.length ? "amber" : "purple" },
+        ]
+      : portal.id === "parent"
+        ? [
+            { label: "出勤率", value: `${learner.attendanceRate}%`, detail: "本阶段记录", tone: "green" },
+            { label: "作业率", value: `${learner.homeworkRate}%`, detail: "按时完成情况", tone: "blue" },
+            { label: "已获徽章", value: badges.length, detail: "阶段成就", tone: "amber" },
+          ]
+        : [
+            { label: "净能量", value: learner.account.totalGrowth, detail: "累计成长值", tone: "blue" },
+            { label: "班币", value: learner.account.stars, detail: "可用星币", tone: "amber" },
+            { label: "连续", value: `${learner.streak}天`, detail: "学习连击", tone: "green" },
+          ];
+
+  const feed = learner.ledger.slice(0, 4);
+  const nextProgress = progressToNextLevel(learner.account.totalGrowth, learner.pet.level);
+
+  return (
+    <div className="panel-stack role-home">
+      <div className="mobile-app-hero">
+        <div className="mobile-app-top">
+          <div>
+            <span>{portal.label}</span>
+            <h2>{learner.nickname} 的成长空间</h2>
+          </div>
+          <strong>{learner.className}</strong>
+        </div>
+
+        <section className="core-data-card" aria-label="今日核心数据">
+          <div className="section-title-row">
+            <h3>今日核心数据</h3>
+            <span>{portal.badge}</span>
+          </div>
+          <div className="core-data-grid">
+            {stats.map((stat) => (
+              <MetricCard key={stat.label} {...stat} />
+            ))}
+          </div>
+        </section>
+
+        <section className="home-pet-card">
+          <div className="home-pet-emoji" aria-hidden="true">{petType.emoji}</div>
+          <div>
+            <span>{learner.pet.stage} · Lv.{learner.pet.level}</span>
+            <h3>{learner.pet.name}</h3>
+            <p>{portal.id === "parent" ? "孩子的学习行为会同步转化为宠物成长。" : petType.trait}</p>
+            <div className="progress-track small" aria-label="成长进度">
+              <i style={{ width: `${nextProgress}%` }} />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <article className="card channel-card">
+        <div className="section-title-row">
+          <div>
+            <span className="eyebrow">频道入口</span>
+            <h3>{portal.label}快捷操作</h3>
+          </div>
+          <small>{portal.actions.join(" / ")}</small>
+        </div>
+        <div className="channel-grid">
+          {portalActions[portal.id].map((action) => (
+            <button key={action.title} onClick={() => onNavigate(action.section)}>
+              <span>{action.icon}</span>
+              <strong>{action.title}</strong>
+              <small>{action.desc}</small>
+            </button>
+          ))}
+        </div>
+      </article>
+
+      <article className="card">
+        <div className="section-title-row">
+          <h3>{portal.id === "teacher" ? "最近课堂动态" : "成长记录"}</h3>
+          <button className="secondary-button small-button" onClick={() => onNavigate("ledger")}>查看更多</button>
+        </div>
+        <div className="home-feed">
+          {feed.map((item) => (
+            <div key={item.id}>
+              <span>{item.growthDelta >= 0 ? "⚡" : "🧾"}</span>
+              <p><strong>{item.source}</strong><small>{item.note}</small></p>
+              <b>{item.date}</b>
+            </div>
+          ))}
+        </div>
+      </article>
+    </div>
   );
 }
 

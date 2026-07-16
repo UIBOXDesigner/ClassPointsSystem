@@ -34,6 +34,8 @@ test("server-renders the learning pet MVP", async () => {
   assert.match(html, /学生端/);
   assert.match(html, /教师端/);
   assert.match(html, /家长端/);
+  assert.match(html, /今日核心数据/);
+  assert.match(html, /频道入口/);
   assert.match(html, /今日任务/);
   assert.match(html, /我的宠物/);
   assert.match(html, /奖励兑换/);
