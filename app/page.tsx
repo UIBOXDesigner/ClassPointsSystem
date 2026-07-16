@@ -133,6 +133,7 @@ type SectionId =
   | "admin";
 
 type PortalRole = "student" | "teacher" | "parent";
+type StudentTab = "home" | "tasks" | "pet" | "badges" | "points" | "shop" | "records" | "ranking";
 
 const STORAGE_KEY = "learning-pet-mvp-v1";
 const LEVEL_STEP = 45;
@@ -871,6 +872,7 @@ export default function Home() {
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
   const [activePortal, setActivePortal] = useState<PortalRole | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
+  const [studentTab, setStudentTab] = useState<StudentTab>("home");
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
 
@@ -935,6 +937,7 @@ export default function Home() {
     const portal = ROLE_PORTALS.find((item) => item.id === portalId) ?? ROLE_PORTALS[1];
     setActivePortal(portal.id);
     setActiveSection(portal.entrySection);
+    if (portal.id === "student") setStudentTab("home");
     setMessage(`已进入${portal.label}：${portal.description}`);
   }
 
@@ -1189,6 +1192,25 @@ export default function Home() {
     );
   }
 
+  if (activePortal === "student") {
+    return (
+      <StudentPortal
+        learner={selectedLearner}
+        petType={selectedPet}
+        tasks={TASKS}
+        rewards={REWARDS}
+        badges={BADGES}
+        leaderboard={leaderboard}
+        activeTab={studentTab}
+        onTabChange={setStudentTab}
+        onCompleteTask={completeTask}
+        onInteract={interactPet}
+        onRedeem={redeemReward}
+        onBack={() => setActivePortal(null)}
+      />
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -1395,6 +1417,366 @@ export default function Home() {
         ))}
       </nav>
     </main>
+  );
+}
+
+function StudentPortal({
+  learner,
+  petType,
+  tasks,
+  rewards,
+  badges,
+  leaderboard,
+  activeTab,
+  onTabChange,
+  onCompleteTask,
+  onInteract,
+  onRedeem,
+  onBack,
+}: {
+  learner: Learner;
+  petType: PetType;
+  tasks: Task[];
+  rewards: Reward[];
+  badges: typeof BADGES;
+  leaderboard: Learner[];
+  activeTab: StudentTab;
+  onTabChange: (tab: StudentTab) => void;
+  onCompleteTask: (task: Task) => void;
+  onInteract: (action: string, cost: number, mood: string) => void;
+  onRedeem: (reward: Reward) => void;
+  onBack: () => void;
+}) {
+  const navItems: { id: StudentTab; label: string; icon: string }[] = [
+    { id: "home", label: "首页", icon: "⌂" },
+    { id: "tasks", label: "任务中心", icon: "▣" },
+    { id: "pet", label: "宠物中心", icon: "♧" },
+    { id: "badges", label: "成就徽章", icon: "◉" },
+    { id: "points", label: "积分中心", icon: "◈" },
+    { id: "shop", label: "奖励商城", icon: "□" },
+    { id: "records", label: "学习记录", icon: "▤" },
+    { id: "ranking", label: "排行榜", icon: "▥" },
+  ];
+  const earnedBadges = badges.filter((badge) => earnedBadgeIds(learner).has(badge.id));
+  const rank = leaderboard.findIndex((item) => item.id === learner.id) + 1;
+
+  return (
+    <main className="student-shell">
+      <aside className="student-sidebar">
+        <div className="student-side-brand">
+          <span>🐾</span>
+          <strong>学伴成长计划</strong>
+        </div>
+
+        <nav className="student-nav" aria-label="学员端功能菜单">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              className={activeTab === item.id ? "active" : ""}
+              onClick={() => onTabChange(item.id)}
+            >
+              <i>{item.icon}</i>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="student-user-card">
+          <span>👦</span>
+          <div>
+            <strong>{learner.nickname}同学</strong>
+            <small>{learner.className}</small>
+          </div>
+        </div>
+
+        <button className="student-back-button" onClick={onBack}>切换入口</button>
+      </aside>
+
+      <section className="student-main">
+        <div className="student-page-title">
+          <h1>学生端 - {navItems.find((item) => item.id === activeTab)?.label}（学习仪表盘）</h1>
+        </div>
+
+        {activeTab === "home" && (
+          <StudentDashboard
+            learner={learner}
+            petType={petType}
+            tasks={tasks}
+            rank={rank}
+            earnedBadges={earnedBadges}
+            onCompleteTask={onCompleteTask}
+          />
+        )}
+        {activeTab === "tasks" && <StudentTasksPage learner={learner} tasks={tasks} onCompleteTask={onCompleteTask} />}
+        {activeTab === "pet" && <StudentPetPage learner={learner} petType={petType} onInteract={onInteract} />}
+        {activeTab === "badges" && <StudentBadgesPage learner={learner} badges={badges} />}
+        {activeTab === "points" && <StudentPointsPage learner={learner} />}
+        {activeTab === "shop" && <StudentShopPage learner={learner} rewards={rewards} onRedeem={onRedeem} />}
+        {activeTab === "records" && <StudentRecordsPage learner={learner} />}
+        {activeTab === "ranking" && <StudentRankingPage learner={learner} leaderboard={leaderboard} />}
+      </section>
+    </main>
+  );
+}
+
+function StudentDashboard({
+  learner,
+  petType,
+  tasks,
+  rank,
+  earnedBadges,
+  onCompleteTask,
+}: {
+  learner: Learner;
+  petType: PetType;
+  tasks: Task[];
+  rank: number;
+  earnedBadges: typeof BADGES;
+  onCompleteTask: (task: Task) => void;
+}) {
+  const todayTasks = ["daily-checkin", "class-practice", "review-task", "active-answer"]
+    .map((id) => taskById(id))
+    .filter(Boolean) as Task[];
+  const progress = progressToNextLevel(learner.account.totalGrowth, learner.pet.level);
+
+  return (
+    <div className="student-dashboard">
+      <section className="student-welcome-card">
+        <span>🌞</span>
+        <div>
+          <h2>欢迎回来，小{learner.nickname}同学！</h2>
+          <p>今天也是努力成长的一天！</p>
+        </div>
+      </section>
+
+      <div className="student-dashboard-grid">
+        <section className="student-pet-showcase">
+          <div className="student-card-label">我的宠物</div>
+          <h2>{petType.name}</h2>
+          <div className="student-pet-scene">
+            <span>{petType.emoji}</span>
+          </div>
+          <div className="student-level-row">
+            <strong>Lv.{learner.pet.level}</strong>
+            <div className="student-progress"><i style={{ width: `${progress}%` }} /></div>
+            <small>{learner.account.totalGrowth} / {(learner.pet.level + 1) * LEVEL_STEP}</small>
+          </div>
+        </section>
+
+        <section className="student-stats-and-tasks">
+          <div className="student-stat-grid">
+            <StudentStatCard icon="🏥" label="成长值" value={learner.account.totalGrowth.toLocaleString()} detail={`较昨日 +${Math.max(learner.completedTasks.length * 20, 80)}`} />
+            <StudentStatCard icon="🪙" label="星币" value={learner.account.stars} detail="今日 +25" />
+            <StudentStatCard icon="❤️" label="连续学习" value={`${learner.streak} 天`} detail="继续加油！" />
+          </div>
+
+          <article className="student-task-card">
+            <h3>今日任务</h3>
+            <div className="student-task-list">
+              {todayTasks.map((task) => {
+                const done = learner.completedTasks.includes(task.id);
+                return (
+                  <button key={task.id} disabled={done} onClick={() => onCompleteTask(task)}>
+                    <span>{task.attribute === "knowledge" ? "📗" : task.attribute === "focus" ? "✅" : task.attribute === "cooperation" ? "🤝" : "🎯"}</span>
+                    <strong>{task.title.replace("完成 ", "").replace("10 分钟", "10分钟")}</strong>
+                    <small>+{task.growth}成长值　+{task.stars}星币</small>
+                    <b>{done ? "已完成" : "去完成"}</b>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <div className="student-bottom-grid">
+        <article>
+          <strong>宠物状态</strong>
+          <span>😊 开心</span>
+          <small>状态良好，继续陪伴成长</small>
+        </article>
+        <article>
+          <strong>今日小贴士</strong>
+          <span>☀️ 坚持复习</span>
+          <small>坚持复习可以帮助你的宠物获得更多经验值！</small>
+        </article>
+        <article>
+          <strong>我的排名</strong>
+          <span>🏆 第 {rank} 名</span>
+          <small>已点亮 {earnedBadges.length} 枚徽章</small>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function StudentStatCard({ icon, label, value, detail }: { icon: string; label: string; value: string | number; detail: string }) {
+  return (
+    <article className="student-stat-card">
+      <span>{icon}</span>
+      <small>{label}</small>
+      <strong>{value}</strong>
+      <em>{detail}</em>
+    </article>
+  );
+}
+
+function StudentTasksPage({ learner, tasks, onCompleteTask }: { learner: Learner; tasks: Task[]; onCompleteTask: (task: Task) => void }) {
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="任务中心" desc="完成学习任务，获得成长值和星币。" />
+      <div className="student-function-grid">
+        {tasks.map((task) => {
+          const done = learner.completedTasks.includes(task.id);
+          return (
+            <article className={`student-function-card ${done ? "done" : ""}`} key={task.id}>
+              <span>{task.type}</span>
+              <h3>{task.title}</h3>
+              <p>{task.description}</p>
+              <small>奖励：+{task.growth} 成长值 / +{task.stars} 星币</small>
+              <button disabled={done} onClick={() => onCompleteTask(task)}>{done ? "已完成" : "去完成"}</button>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StudentPetPage({ learner, petType, onInteract }: { learner: Learner; petType: PetType; onInteract: (action: string, cost: number, mood: string) => void }) {
+  const interactions = [
+    ["喂食", 3, "精神饱满"],
+    ["抚摸", 1, "开心"],
+    ["洗澡", 4, "期待互动"],
+    ["训练", 5, "正在学习"],
+  ] as const;
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="宠物中心" desc="照顾你的学习宠物，查看等级、状态和成长属性。" />
+      <div className="student-pet-detail">
+        <div className="student-pet-big"><span>{petType.emoji}</span><strong>{learner.pet.name}</strong><small>{petType.name} · {learner.pet.stage}</small></div>
+        <div className="student-attr-grid">
+          {(Object.keys(ATTRIBUTE_LABELS) as AttributeKey[]).map((key) => (
+            <div key={key}>
+              <strong>{ATTRIBUTE_LABELS[key]}</strong>
+              <div className="student-progress"><i style={{ width: `${learner.pet[key]}%` }} /></div>
+              <small>{learner.pet[key]} / 100</small>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="student-action-grid">
+        {interactions.map(([name, cost, mood]) => <button key={name} onClick={() => onInteract(name, cost, mood)}>{name}<small>{cost} 星币</small></button>)}
+      </div>
+    </div>
+  );
+}
+
+function StudentBadgesPage({ learner, badges }: { learner: Learner; badges: typeof BADGES }) {
+  const earned = earnedBadgeIds(learner);
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="成就徽章" desc="记录学习过程中的每一次突破。" />
+      <div className="student-function-grid badge-view">
+        {badges.map((badge) => (
+          <article className={`student-badge-card ${earned.has(badge.id) ? "active" : ""}`} key={badge.id}>
+            <span>{badge.icon}</span>
+            <h3>{badge.title}</h3>
+            <p>{badge.description}</p>
+            <b>{earned.has(badge.id) ? "已获得" : "待点亮"}</b>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StudentPointsPage({ learner }: { learner: Learner }) {
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="积分中心" desc="成长值用于宠物升级，星币用于兑换奖励。" />
+      <div className="student-stat-grid wide">
+        <StudentStatCard icon="🏥" label="累计成长值" value={learner.account.totalGrowth} detail="不会因兑换减少" />
+        <StudentStatCard icon="🪙" label="可用星币" value={learner.account.stars} detail={`累计获得 ${learner.account.totalStars}`} />
+        <StudentStatCard icon="🔥" label="连续学习" value={`${learner.streak} 天`} detail="坚持越久奖励越多" />
+      </div>
+      <div className="student-rule-box">
+        <strong>积分说明</strong>
+        <p>完成签到、作业、复习、互动和阶段挑战可以获得成长值与星币。重复提交任务不会重复发放积分。</p>
+      </div>
+    </div>
+  );
+}
+
+function StudentShopPage({ learner, rewards, onRedeem }: { learner: Learner; rewards: Reward[]; onRedeem: (reward: Reward) => void }) {
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="奖励商城" desc="使用星币兑换宠物装扮、学习权益和实体奖励。" />
+      <div className="student-function-grid">
+        {rewards.map((reward) => {
+          const owned = learner.ownedRewards.includes(reward.id);
+          return (
+            <article className={`student-function-card ${owned ? "done" : ""}`} key={reward.id}>
+              <span>{reward.type}</span>
+              <h3>{reward.title}</h3>
+              <p>{reward.description}</p>
+              <small>{reward.price} 星币 · 库存 {reward.stock}</small>
+              <button disabled={owned} onClick={() => onRedeem(reward)}>{owned ? "已拥有" : "立即兑换"}</button>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StudentRecordsPage({ learner }: { learner: Learner }) {
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="学习记录" desc="查看近期积分流水、出勤、作业和测验趋势。" />
+      <div className="student-stat-grid wide">
+        <StudentStatCard icon="📅" label="出勤率" value={`${learner.attendanceRate}%`} detail="近期课程" />
+        <StudentStatCard icon="📝" label="作业率" value={`${learner.homeworkRate}%`} detail="按时提交" />
+        <StudentStatCard icon="📈" label="测验趋势" value={`${learner.quizTrend > 0 ? "+" : ""}${learner.quizTrend}`} detail="较上阶段" />
+      </div>
+      <div className="student-record-list">
+        {learner.ledger.slice(0, 8).map((item) => (
+          <div key={item.id}>
+            <span>{item.date}</span>
+            <strong>{item.source}</strong>
+            <small>{item.note}</small>
+            <b>{item.growthDelta >= 0 ? "+" : ""}{item.growthDelta} / {item.starsDelta >= 0 ? "+" : ""}{item.starsDelta}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StudentRankingPage({ learner, leaderboard }: { learner: Learner; leaderboard: Learner[] }) {
+  return (
+    <div className="student-page-card">
+      <StudentSectionTitle title="排行榜" desc="只展示正向成长，不显示倒数排名。" />
+      <div className="student-ranking-list">
+        {leaderboard.map((item, index) => (
+          <div className={item.id === learner.id ? "self" : ""} key={item.id}>
+            <span>#{index + 1}</span>
+            <strong>{item.nickname}</strong>
+            <small>{item.pet.name} · Lv.{item.pet.level}</small>
+            <b>{item.account.totalGrowth} 成长值</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StudentSectionTitle({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="student-section-title">
+      <h2>{title}</h2>
+      <p>{desc}</p>
+    </div>
   );
 }
 

@@ -53,6 +53,14 @@ test("removes disposable starter preview and skeleton dependency", async () => {
 
   assert.match(page, /学伴成长计划/);
   assert.match(page, /createInitialLearners/);
+  assert.match(page, /StudentPortal/);
+  assert.match(page, /任务中心/);
+  assert.match(page, /宠物中心/);
+  assert.match(page, /成就徽章/);
+  assert.match(page, /积分中心/);
+  assert.match(page, /奖励商城/);
+  assert.match(page, /学习记录/);
+  assert.match(page, /排行榜/);
   assert.match(layout, /lang="zh-CN"/);
   assert.match(layout, /积分宠物培养系统/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);
