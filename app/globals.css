@@ -1146,3 +1146,244 @@ td {
     justify-items: stretch;
   }
 }
+
+.activity-grid,
+.activity-goals,
+.report-stat-grid,
+.report-timeline,
+.badge-strip {
+  display: grid;
+  gap: 14px;
+}
+
+.activity-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.activity-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 26px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 42px rgba(38, 50, 77, 0.08);
+}
+
+.activity-head,
+.goal-row,
+.class-pet-card,
+.certificate-top,
+.report-timeline div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.activity-head {
+  justify-content: space-between;
+}
+
+.activity-head span,
+.reward-banner {
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #4f46e5;
+  background: rgba(109, 93, 252, 0.1);
+  font-weight: 900;
+  font-size: 0.82rem;
+}
+
+.activity-head small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.activity-card p {
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.goal-row {
+  align-items: stretch;
+  flex-direction: column;
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.goal-row strong,
+.goal-row small {
+  display: block;
+}
+
+.goal-row small {
+  color: #64748b;
+}
+
+.reward-banner {
+  border-radius: 16px;
+  color: #065f46;
+  background: rgba(16, 185, 129, 0.11);
+  line-height: 1.5;
+}
+
+.class-pet-card {
+  align-items: stretch;
+  border-radius: 22px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(109, 93, 252, 0.1));
+}
+
+.class-pet-orb,
+.certificate-pet {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 3rem;
+}
+
+.message-preview,
+.teacher-comment {
+  border-radius: 20px;
+  padding: 18px;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.72);
+  line-height: 1.8;
+}
+
+.report-certificate {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.18), transparent 18rem),
+    linear-gradient(135deg, rgba(255,255,255,0.94), rgba(238, 247, 255, 0.88));
+}
+
+.certificate-top {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.certificate-top h3 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: -0.05em;
+}
+
+.report-stat-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.report-stat-grid div {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.report-stat-grid span,
+.report-stat-grid strong {
+  display: block;
+}
+
+.report-stat-grid span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.report-stat-grid strong {
+  margin-top: 6px;
+  color: #4f46e5;
+  font-size: 1.35rem;
+}
+
+.report-timeline div {
+  align-items: flex-start;
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.report-timeline span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--green));
+  font-weight: 900;
+}
+
+.report-timeline p,
+.teacher-comment p {
+  margin-bottom: 0;
+}
+
+.badge-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.badge-strip span {
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  font-weight: 900;
+}
+
+@media (max-width: 1120px) {
+  .activity-grid,
+  .report-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .activity-grid,
+  .report-stat-grid,
+  .badge-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .certificate-top,
+  .class-pet-card {
+    flex-direction: column;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .hero,
+  .notice,
+  .summary-grid,
+  .side-nav,
+  .panel-header button,
+  .activity-grid,
+  .workspace > aside {
+    display: none !important;
+  }
+
+  .app-shell,
+  .workspace,
+  .panel-area {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block;
+  }
+
+  .card,
+  .panel-header {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+    break-inside: avoid;
+  }
+}

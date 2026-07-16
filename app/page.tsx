@@ -85,12 +85,32 @@ type LearnerDraft = {
   petName: string;
 };
 
+type ActivityGoal = {
+  id: string;
+  title: string;
+  current: number;
+  target: number;
+  metric: string;
+};
+
+type SeasonActivity = {
+  id: string;
+  title: string;
+  theme: string;
+  period: string;
+  description: string;
+  reward: string;
+  goals: ActivityGoal[];
+};
+
 type SectionId =
   | "overview"
   | "learners"
   | "tasks"
   | "pet"
   | "shop"
+  | "activities"
+  | "reports"
   | "ledger"
   | "teacher"
   | "admin";
@@ -298,12 +318,76 @@ const REWARDS: Reward[] = [
   },
 ];
 
+
+const SEASON_ACTIVITIES: SeasonActivity[] = [
+  {
+    id: "forest-season",
+    title: "探索森林学习季",
+    theme: "习惯建立",
+    period: "4 周",
+    description: "围绕签到、作业、复习和课堂互动，帮助新学员完成宠物第一次进化。",
+    reward: "限定森林房间背景 + 阶段成长证书",
+    goals: [
+      { id: "attendance", title: "班级出勤率", current: 92, target: 95, metric: "%" },
+      { id: "homework", title: "作业完成率", current: 89, target: 92, metric: "%" },
+      { id: "review", title: "复习任务完成", current: 64, target: 80, metric: "次" },
+    ],
+  },
+  {
+    id: "speak-month",
+    title: "勇气表达月",
+    theme: "课堂互动",
+    period: "30 天",
+    description: "重点鼓励首次发言、作品展示和同伴互助，用进步型奖励替代单纯排名。",
+    reward: "勇敢发言徽章 + 星星帽子兑换券",
+    goals: [
+      { id: "answer", title: "主动回答次数", current: 38, target: 60, metric: "次" },
+      { id: "showcase", title: "作品展示人数", current: 12, target: 20, metric: "人" },
+      { id: "help", title: "互助记录", current: 18, target: 30, metric: "次" },
+    ],
+  },
+  {
+    id: "graduation",
+    title: "毕业成长礼",
+    theme: "阶段总结",
+    period: "课程结束前 1 周",
+    description: "自动整理宠物最终形态、任务数量、徽章、连续学习纪录和教师寄语。",
+    reward: "电子毕业证书 + 成长时间线分享图",
+    goals: [
+      { id: "test", title: "阶段测验完成", current: 21, target: 30, metric: "人" },
+      { id: "summary", title: "学习总结提交", current: 16, target: 30, metric: "份" },
+      { id: "report", title: "家长报告查看", current: 10, target: 24, metric: "次" },
+    ],
+  },
+];
+
+const MESSAGE_TEMPLATES = [
+  {
+    title: "连续学习鼓励",
+    content: "今天完成一个复习任务，就能帮助你的学伴积累新的成长值。保持自己的节奏就很好。",
+  },
+  {
+    title: "作业截止提醒",
+    content: "本周作业即将截止，完成后可获得成长值和星币。需要帮助时可以先兑换作业提示卡。",
+  },
+  {
+    title: "宠物进化提醒",
+    content: "你的学伴已经接近下一阶段，完成阶段测验和一次课堂互动就能继续进化。",
+  },
+  {
+    title: "家长周报提示",
+    content: "本周孩子在出勤、作业和互动方面都有新的记录，建议一起查看成长报告。",
+  },
+];
+
 const NAV_ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "overview", label: "运营总览", hint: "学习状态与成长闭环" },
   { id: "learners", label: "学员管理", hint: "新增、搜索、编辑学员" },
   { id: "tasks", label: "任务中心", hint: "每日、阶段、补救任务" },
   { id: "pet", label: "宠物培养", hint: "等级、属性、互动" },
   { id: "shop", label: "奖励商城", hint: "虚拟、权益、实体奖励" },
+  { id: "activities", label: "运营活动", hint: "赛季、共同目标、通知" },
+  { id: "reports", label: "家长报告", hint: "周报、证书、打印" },
   { id: "ledger", label: "积分流水", hint: "成长值与星币记录" },
   { id: "teacher", label: "教师端", hint: "批量计分与预警" },
   { id: "admin", label: "管理看板", hint: "规则、成本、风控" },
@@ -908,6 +992,9 @@ export default function Home() {
               <button className="secondary-button" onClick={() => setActiveSection("learners")}>
                 管理学员
               </button>
+              <button className="secondary-button" onClick={() => setActiveSection("reports")}>
+                查看家长报告
+              </button>
             </div>
           </div>
 
@@ -980,6 +1067,19 @@ export default function Home() {
 
           {activeSection === "shop" && (
             <ShopPanel learner={selectedLearner} rewards={REWARDS} onRedeem={redeemReward} />
+          )}
+
+          {activeSection === "activities" && (
+            <ActivitiesPanel
+              learners={learners}
+              activities={SEASON_ACTIVITIES}
+              templates={MESSAGE_TEMPLATES}
+              onBatch={batchClassReward}
+            />
+          )}
+
+          {activeSection === "reports" && (
+            <ReportsPanel learner={selectedLearner} petType={selectedPet} badges={selectedBadges} />
           )}
 
           {activeSection === "ledger" && <LedgerPanel learner={selectedLearner} />}
@@ -1587,6 +1687,179 @@ function ShopPanel({
             </article>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+
+function ActivitiesPanel({
+  learners,
+  activities,
+  templates,
+  onBatch,
+}: {
+  learners: Learner[];
+  activities: SeasonActivity[];
+  templates: typeof MESSAGE_TEMPLATES;
+  onBatch: () => void;
+}) {
+  const [selectedTemplate, setSelectedTemplate] = useState(templates[0].content);
+  const classPetProgress = Math.round(
+    (learners.reduce((sum, learner) => sum + Math.min(100, learner.pet.level * 4), 0) / learners.length),
+  );
+  const stableLearners = learners.filter((learner) => riskLabels(learner).length === 0).length;
+
+  return (
+    <div className="panel-stack">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">运营活动中心</span>
+          <h2>把试点班级变成可持续运营的赛季活动</h2>
+        </div>
+        <button className="primary-button small-button" onClick={onBatch}>完成共同目标并发奖</button>
+      </div>
+
+      <section className="summary-grid compact">
+        <MetricCard label="班级宠物成长" value={`${classPetProgress}%`} detail="按全班宠物等级估算" tone="green" />
+        <MetricCard label="稳定学员" value={`${stableLearners}/${learners.length}`} detail="暂无出勤/作业预警" tone="blue" />
+        <MetricCard label="活动模板" value={activities.length} detail="赛季、表达、毕业" tone="purple" />
+        <MetricCard label="通知文案" value={templates.length} detail="低压力提醒" tone="amber" />
+      </section>
+
+      <div className="activity-grid">
+        {activities.map((activity) => (
+          <article className="activity-card" key={activity.id}>
+            <div className="activity-head">
+              <span>{activity.theme}</span>
+              <small>{activity.period}</small>
+            </div>
+            <h3>{activity.title}</h3>
+            <p>{activity.description}</p>
+            <div className="activity-goals">
+              {activity.goals.map((goal) => {
+                const percent = Math.min(100, Math.round((goal.current / goal.target) * 100));
+                return (
+                  <div className="goal-row" key={goal.id}>
+                    <div>
+                      <strong>{goal.title}</strong>
+                      <small>{goal.current}{goal.metric} / {goal.target}{goal.metric}</small>
+                    </div>
+                    <div className="progress-track small"><i style={{ width: `${percent}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="reward-banner">活动奖励：{activity.reward}</div>
+          </article>
+        ))}
+      </div>
+
+      <div className="two-column">
+        <article className="card">
+          <h3>班级共同养成</h3>
+          <div className="class-pet-card">
+            <div className="class-pet-orb">🌳</div>
+            <div>
+              <strong>班级宠物：知识树</strong>
+              <p>由全班出勤率、作业完成率、复习次数和互助记录共同推动成长。</p>
+              <div className="progress-track"><i style={{ width: `${classPetProgress}%` }} /></div>
+            </div>
+          </div>
+        </article>
+
+        <article className="card">
+          <h3>低压力通知文案</h3>
+          <select className="wide-select" value={selectedTemplate} onChange={(event) => setSelectedTemplate(event.target.value)}>
+            {templates.map((template) => <option key={template.title} value={template.content}>{template.title}</option>)}
+          </select>
+          <div className="message-preview">{selectedTemplate}</div>
+          <p className="soft-note">避免“宠物快饿坏了”等威胁式提醒，优先强调下一步行动。</p>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function ReportsPanel({
+  learner,
+  petType,
+  badges,
+}: {
+  learner: Learner;
+  petType: PetType;
+  badges: typeof BADGES;
+}) {
+  const reportItems = [
+    { label: "出勤率", value: `${learner.attendanceRate}%` },
+    { label: "作业完成率", value: `${learner.homeworkRate}%` },
+    { label: "连续学习", value: `${learner.streak} 天` },
+    { label: "任务完成", value: `${learner.completedTasks.length} 项` },
+    { label: "获得徽章", value: `${badges.length} 枚` },
+    { label: "测验变化", value: learner.quizTrend > 0 ? `+${learner.quizTrend} 分` : `${learner.quizTrend} 分` },
+  ];
+  const timeline = [
+    "完成首次签到并孵化专属学伴",
+    `宠物成长至 ${learner.pet.stage}，当前等级 Lv.${learner.pet.level}`,
+    `累计获得 ${learner.account.totalGrowth} 成长值与 ${learner.account.totalStars} 星币`,
+    badges.length > 0 ? `获得 ${badges.map((badge) => badge.title).join("、")}` : "正在解锁第一枚成就徽章",
+  ];
+
+  return (
+    <div className="panel-stack">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">家长成长报告</span>
+          <h2>{learner.nickname} 的阶段成长记录</h2>
+        </div>
+        <button className="primary-button small-button" onClick={() => window.print()}>打印 / 保存 PDF</button>
+      </div>
+
+      <article className="report-certificate card">
+        <div className="certificate-top">
+          <div>
+            <span className="eyebrow">Learning Companion Report</span>
+            <h3>{learner.name} · {learner.course}</h3>
+            <p>{learner.className} 的阶段学习过程报告，重点展示努力、习惯和进步。</p>
+          </div>
+          <div className="certificate-pet">{petType.emoji}</div>
+        </div>
+        <div className="report-stat-grid">
+          {reportItems.map((item) => (
+            <div key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <div className="two-column">
+        <article className="card">
+          <h3>成长时间线</h3>
+          <div className="report-timeline">
+            {timeline.map((item, index) => (
+              <div key={item}>
+                <span>{index + 1}</span>
+                <p>{item}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="card">
+          <h3>教师寄语</h3>
+          <div className="teacher-comment">
+            <p>
+              {learner.quizTrend >= 0
+                ? `${learner.nickname} 本阶段保持了较好的学习节奏，建议继续强化复习和课堂表达。`
+                : `${learner.nickname} 近期需要先恢复作业和复习节奏，完成补救任务后可以重新进入成长循环。`}
+            </p>
+          </div>
+          <div className="badge-strip">
+            {badges.length === 0 ? <span>暂无徽章</span> : badges.map((badge) => <span key={badge.id}>{badge.icon} {badge.title}</span>)}
+          </div>
+        </article>
       </div>
     </div>
   );
