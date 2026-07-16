@@ -135,8 +135,8 @@ type SectionId =
 type PortalRole = "student" | "teacher" | "parent";
 type StudentTab = "home" | "tasks" | "pet" | "badges" | "points" | "shop" | "records" | "ranking";
 
-const STORAGE_KEY = "learning-pet-mvp-v1";
-const LEVEL_STEP = 45;
+const STORAGE_KEY = "learning-pet-mvp-v2";
+const LEVEL_STEP = 200;
 
 const PETS: PetType[] = [
   {
@@ -282,9 +282,9 @@ const TASKS: Task[] = [
 const REWARDS: Reward[] = [
   {
     id: "blue-scarf",
-    title: "蓝色围巾",
+    title: "可爱围巾",
     type: "虚拟装扮",
-    price: 18,
+    price: 80,
     stock: 99,
     description: "给宠物换上清爽围巾，展示稳定学习状态。",
   },
@@ -292,31 +292,87 @@ const REWARDS: Reward[] = [
     id: "star-hat",
     title: "星星帽子",
     type: "虚拟装扮",
-    price: 28,
+    price: 120,
     stock: 80,
     description: "完成阶段任务后最适合搭配的荣誉装扮。",
   },
   {
-    id: "forest-room",
-    title: "探索森林房间",
+    id: "green-cap",
+    title: "棒球帽",
     type: "虚拟装扮",
-    price: 35,
-    stock: 50,
-    description: "把宠物房间布置成主题学习森林。",
+    price: 100,
+    stock: 80,
+    description: "绿色学习帽，适合连续学习后给宠物换装。",
+  },
+  {
+    id: "knowledge-bag",
+    title: "知识小书包",
+    type: "虚拟装扮",
+    price: 120,
+    stock: 60,
+    description: "装满学习资料的小书包，展示认真准备状态。",
   },
   {
     id: "hint-card",
     title: "作业提示卡",
     type: "学习权益",
-    price: 30,
+    price: 150,
     stock: 30,
     description: "兑换一次老师的思路提示，不直接免除任务。",
+  },
+  {
+    id: "priority-seat",
+    title: "优先座位卡",
+    type: "学习权益",
+    price: 120,
+    stock: 20,
+    description: "下次课堂可优先选择座位或展示顺序。",
+  },
+  {
+    id: "forest-room",
+    title: "彩虹房子",
+    type: "虚拟装扮",
+    price: 200,
+    stock: 50,
+    description: "把宠物房间布置成彩虹主题学习小屋。",
+  },
+  {
+    id: "starry-room",
+    title: "星空背景",
+    type: "虚拟装扮",
+    price: 150,
+    stock: 45,
+    description: "夜空主题背景，适合复习季和挑战任务。",
+  },
+  {
+    id: "wrong-question",
+    title: "错题讲解券",
+    type: "学习权益",
+    price: 200,
+    stock: 25,
+    description: "获得一次错题讲解和学习建议。",
+  },
+  {
+    id: "art-pens",
+    title: "实体彩绘笔套装",
+    type: "实体奖励",
+    price: 300,
+    stock: 12,
+    description: "适合作品展示和学习笔记装饰。",
+  },
+  {
+    id: "limited-frame",
+    title: "限定头像框",
+    type: "公益奖励",
+    price: 180,
+    stock: 100,
+    description: "主题活动限定头像框，赛季结束后保留纪念。",
   },
   {
     id: "teacher-feedback",
     title: "教师语音点评",
     type: "学习权益",
-    price: 45,
+    price: 240,
     stock: 20,
     description: "获得一次个性化学习点评和下一步建议。",
   },
@@ -324,7 +380,7 @@ const REWARDS: Reward[] = [
     id: "notebook",
     title: "成长笔记本",
     type: "实体奖励",
-    price: 60,
+    price: 260,
     stock: 12,
     description: "适合记录错题、灵感和阶段学习总结。",
   },
@@ -332,7 +388,7 @@ const REWARDS: Reward[] = [
     id: "donate-book",
     title: "公益图书积分",
     type: "公益奖励",
-    price: 40,
+    price: 220,
     stock: 100,
     description: "班级累计兑换后由机构统一捐赠图书。",
   },
@@ -610,20 +666,20 @@ function createInitialLearners(): Learner[] {
   return [
     createLearner({
       id: "stu-001",
-      name: "林小雨",
-      nickname: "小雨",
-      className: "英语 A 班",
-      course: "青少年英语提升",
-      petType: "cat",
-      petName: "小智",
-      growth: 286,
-      stars: 92,
+      name: "李小明",
+      nickname: "小明",
+      className: "三年级2班",
+      course: "学伴成长计划",
+      petType: "dog",
+      petName: "勇气犬",
+      growth: 2860,
+      stars: 568,
       streak: 7,
       attendanceRate: 100,
       homeworkRate: 96,
       quizTrend: 10,
-      completedTasks: ["daily-checkin", "homework-submit", "active-answer", "three-day-streak"],
-      attributes: { knowledge: 74, focus: 82, action: 76, cooperation: 58 },
+      completedTasks: ["daily-checkin", "homework-submit", "review-task", "active-answer"],
+      attributes: { knowledge: 85, focus: 72, action: 68, cooperation: 55 },
     }),
     createLearner({
       id: "stu-002",
@@ -1494,7 +1550,7 @@ function StudentPortal({
 
       <section className="student-main">
         <div className="student-page-title">
-          <h1>学生端 - {navItems.find((item) => item.id === activeTab)?.label}（学习仪表盘）</h1>
+          <h1>{activeTab === "home" ? "学生端 - 首页（学习仪表盘）" : navItems.find((item) => item.id === activeTab)?.label}</h1>
         </div>
 
         {activeTab === "home" && (
@@ -1622,51 +1678,207 @@ function StudentStatCard({ icon, label, value, detail }: { icon: string; label: 
 }
 
 function StudentTasksPage({ learner, tasks, onCompleteTask }: { learner: Learner; tasks: Task[]; onCompleteTask: (task: Task) => void }) {
+  const taskTabs: { label: string; type: Task["type"] }[] = [
+    { label: "每日任务", type: "每日" },
+    { label: "每周任务", type: "每周" },
+    { label: "课程任务", type: "阶段" },
+    { label: "挑战任务", type: "挑战" },
+    { label: "补救任务", type: "补救" },
+  ];
+  const [activeType, setActiveType] = useState<Task["type"]>("每日");
+  const visibleTasks = tasks.filter((task) => task.type === activeType);
+  const dailyTasks = tasks.filter((task) => task.type === "每日");
+  const dailyDone = dailyTasks.filter((task) => learner.completedTasks.includes(task.id)).length;
+  const activityScore = Math.min(100, Math.max(80, Math.round((dailyDone / Math.max(dailyTasks.length, 1)) * 100)));
+  const weeklyTotal = 6;
+  const weeklyDone = Math.min(weeklyTotal, learner.completedTasks.length);
+  const weeklyPercent = Math.round((weeklyDone / weeklyTotal) * 100);
+
+  function taskProgress(task: Task, done: boolean) {
+    if (task.id === "homework-submit") return { current: done ? 6 : 0, target: 8 };
+    if (task.id === "three-day-streak") return { current: Math.min(learner.streak, 7), target: 7 };
+    if (task.id === "team-project") return { current: done ? 1 : 0, target: 1 };
+    if (task.id === "unit-test") return { current: done ? 1 : 0, target: 1 };
+    return { current: done ? 1 : 0, target: 1 };
+  }
+
   return (
-    <div className="student-page-card">
-      <StudentSectionTitle title="任务中心" desc="完成学习任务，获得成长值和星币。" />
-      <div className="student-function-grid">
-        {tasks.map((task) => {
-          const done = learner.completedTasks.includes(task.id);
-          return (
-            <article className={`student-function-card ${done ? "done" : ""}`} key={task.id}>
-              <span>{task.type}</span>
-              <h3>{task.title}</h3>
-              <p>{task.description}</p>
-              <small>奖励：+{task.growth} 成长值 / +{task.stars} 星币</small>
-              <button disabled={done} onClick={() => onCompleteTask(task)}>{done ? "已完成" : "去完成"}</button>
-            </article>
-          );
-        })}
+    <div className="student-page-card student-task-center-card">
+      <div className="student-tabs-row" role="tablist" aria-label="任务分类">
+        {taskTabs.map((tab) => (
+          <button
+            key={tab.label}
+            className={activeType === tab.type ? "active" : ""}
+            onClick={() => setActiveType(tab.type)}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="student-task-center-layout">
+        <section className="student-task-board" aria-label="任务列表">
+          {visibleTasks.map((task) => {
+            const done = learner.completedTasks.includes(task.id);
+            const progress = taskProgress(task, done);
+            const percent = Math.min(100, Math.round((progress.current / progress.target) * 100));
+            return (
+              <article className={`student-task-row-card ${done ? "done" : ""}`} key={task.id}>
+                <span className={`student-task-icon ${done ? "done" : ""}`}>
+                  {task.attribute === "knowledge" ? "▣" : task.attribute === "focus" ? "✓" : task.attribute === "cooperation" ? "♡" : "◎"}
+                </span>
+                <div className="student-task-row-main">
+                  <strong>{task.title.replace("完成 ", "")}</strong>
+                  <div className="student-task-progress-line">
+                    <i style={{ width: `${percent}%` }} />
+                  </div>
+                </div>
+                <small>{progress.current}/{progress.target}</small>
+                <em>总任务</em>
+                <b>+{task.growth}成长值　+{task.stars}星币</b>
+                <button disabled={done} onClick={() => onCompleteTask(task)} type="button">
+                  {done ? "已完成" : "去完成"}
+                </button>
+              </article>
+            );
+          })}
+        </section>
+
+        <aside className="student-task-insights" aria-label="任务进度">
+          <article className="student-activity-card">
+            <strong>今日活跃度</strong>
+            <span>{activityScore}</span>
+            <div className="student-gift-track">
+              <i style={{ width: `${activityScore}%` }} />
+              <b style={{ left: "22%" }}>🎁</b>
+              <b style={{ left: "50%" }}>🎁</b>
+              <b style={{ left: "78%" }}>🎁</b>
+              <b className="muted" style={{ left: "96%" }}>🎁</b>
+            </div>
+            <div className="student-track-labels"><small>30</small><small>60</small><small>90</small><small>100</small></div>
+          </article>
+
+          <article className="student-week-card">
+            <strong>本周任务进度</strong>
+            <div className="student-week-progress">
+              <div className="student-ring" style={{ ["--ring" as string]: `${weeklyPercent}%` }}><span>{weeklyPercent}%</span></div>
+              <div>
+                <p>已完成　{weeklyDone}/{weeklyTotal}</p>
+                <button onClick={() => setActiveType("阶段")} type="button">查看全部任务</button>
+              </div>
+            </div>
+          </article>
+        </aside>
       </div>
     </div>
   );
 }
 
 function StudentPetPage({ learner, petType, onInteract }: { learner: Learner; petType: PetType; onInteract: (action: string, cost: number, mood: string) => void }) {
+  const levelProgress = progressToNextLevel(learner.account.totalGrowth, learner.pet.level);
+  const stages = ["幼年期", "成长初期", "进阶期", "成熟期", "荣誉期"];
+  const stageIndex = learner.pet.level >= 31 ? 4 : learner.pet.level >= 21 ? 3 : learner.pet.level >= 11 ? 2 : learner.pet.level >= 6 ? 1 : 0;
+  const conditions = [
+    { label: "达到等级 Lv.20", current: Math.min(learner.pet.level, 20), target: 20 },
+    { label: "完成作业 8 次", current: learner.completedTasks.includes("homework-submit") ? 6 : 0, target: 8 },
+    { label: "连续学习 5 天", current: Math.min(learner.streak, 5), target: 5 },
+    { label: "完成测验 1 次", current: learner.completedTasks.includes("unit-test") ? 1 : 0, target: 1 },
+    { label: "课堂互动 1 次", current: learner.completedTasks.includes("active-answer") ? 1 : 0, target: 1 },
+  ];
+  const completedConditions = conditions.filter((item) => item.current >= item.target).length;
   const interactions = [
-    ["喂食", 3, "精神饱满"],
-    ["抚摸", 1, "开心"],
-    ["洗澡", 4, "期待互动"],
-    ["训练", 5, "正在学习"],
-  ] as const;
+    { name: "喂食", icon: "🍖", cost: 3, mood: "精神饱满", gain: "+10经验" },
+    { name: "训练", icon: "🎧", cost: 5, mood: "正在学习", gain: "+15经验" },
+    { name: "洗澡", icon: "🛁", cost: 4, mood: "期待互动", gain: "+10心情" },
+  ];
+  const accessories = ["🧣", "🧢", "🕶️", "🐕", "🔒", "🔒", "🦄"];
+
   return (
-    <div className="student-page-card">
-      <StudentSectionTitle title="宠物中心" desc="照顾你的学习宠物，查看等级、状态和成长属性。" />
-      <div className="student-pet-detail">
-        <div className="student-pet-big"><span>{petType.emoji}</span><strong>{learner.pet.name}</strong><small>{petType.name} · {learner.pet.stage}</small></div>
-        <div className="student-attr-grid">
-          {(Object.keys(ATTRIBUTE_LABELS) as AttributeKey[]).map((key) => (
-            <div key={key}>
-              <strong>{ATTRIBUTE_LABELS[key]}</strong>
-              <div className="student-progress"><i style={{ width: `${learner.pet[key]}%` }} /></div>
-              <small>{learner.pet[key]} / 100</small>
+    <div className="student-page-card student-pet-cultivate-card">
+      <div className="student-pet-layout-pro">
+        <aside className="student-pet-left-panel">
+          <article className="student-pet-info-card">
+            <div className="student-pet-name-row">
+              <h2>{learner.pet.name}</h2>
+              <button type="button" aria-label="修改宠物名称">✎</button>
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="student-action-grid">
-        {interactions.map(([name, cost, mood]) => <button key={name} onClick={() => onInteract(name, cost, mood)}>{name}<small>{cost} 星币</small></button>)}
+            <div className="student-level-chip-row">
+              <strong>Lv.{learner.pet.level}</strong>
+              <span>{learner.pet.stage}</span>
+            </div>
+            <div className="student-pet-level-bar"><i style={{ width: `${levelProgress}%` }} /></div>
+            <small>{learner.account.totalGrowth % LEVEL_STEP}/{LEVEL_STEP} 经验</small>
+          </article>
+
+          <article className="student-growth-stage-card">
+            <strong>成长阶段</strong>
+            <div className="student-stage-track">
+              {stages.map((stage, index) => (
+                <span className={index <= stageIndex ? "active" : ""} key={stage}>
+                  <i>{index <= stageIndex ? "🐾" : "🔒"}</i>
+                  <small>{stage}</small>
+                </span>
+              ))}
+            </div>
+          </article>
+
+          <article className="student-evolution-card">
+            <strong>进化条件（{completedConditions}/5）</strong>
+            {conditions.map((condition) => {
+              const percent = Math.min(100, Math.round((condition.current / condition.target) * 100));
+              return (
+                <div className="student-condition-row" key={condition.label}>
+                  <span>{condition.current >= condition.target ? "☑" : "☐"}</span>
+                  <small>{condition.label}</small>
+                  <em>{condition.current}/{condition.target}</em>
+                  <div><i style={{ width: `${percent}%` }} /></div>
+                </div>
+              );
+            })}
+            <p>满足所有条件即可进化为进阶期</p>
+          </article>
+        </aside>
+
+        <section className="student-pet-stage-main" aria-label="宠物展示">
+          <div className="student-pet-glow" />
+          <div className="student-pet-avatar-pro"><span>{petType.emoji}</span></div>
+          <div className="student-pedestal" />
+        </section>
+
+        <aside className="student-pet-right-panel">
+          <article className="student-attribute-card-pro">
+            <div className="student-card-headline"><strong>属性成长</strong><button type="button">查看详情 ›</button></div>
+            {(Object.keys(ATTRIBUTE_LABELS) as AttributeKey[]).map((key) => (
+              <div className="student-attribute-row-pro" key={key}>
+                <span>{key === "knowledge" ? "🛡" : key === "focus" ? "●" : key === "action" ? "⚡" : "♧"}</span>
+                <small>{ATTRIBUTE_LABELS[key]}</small>
+                <div><i style={{ width: `${learner.pet[key]}%` }} /></div>
+                <em>{learner.pet[key]} / 100</em>
+              </div>
+            ))}
+          </article>
+
+          <div className="student-interaction-row-pro">
+            {interactions.map((item) => (
+              <button key={item.name} onClick={() => onInteract(item.name, item.cost, item.mood)} type="button">
+                <span>{item.icon}</span>
+                <strong>{item.name}</strong>
+                <small>可获得 {item.gain}</small>
+              </button>
+            ))}
+          </div>
+
+          <article className="student-outfit-panel">
+            <div className="student-outfit-tabs"><button className="active" type="button">装扮</button><button type="button">技能</button><button type="button">成长日记</button></div>
+            <div className="student-accessory-grid">
+              {accessories.map((item, index) => (
+                <span className={item === "🔒" ? "locked" : ""} key={`${item}-${index}`}>{item}</span>
+              ))}
+            </div>
+            <button className="student-training-button" onClick={() => onInteract("训练", 5, "正在学习")} type="button">立即开始训练</button>
+          </article>
+        </aside>
       </div>
     </div>
   );
@@ -1708,20 +1920,75 @@ function StudentPointsPage({ learner }: { learner: Learner }) {
   );
 }
 
+const SHOP_CATEGORIES: { label: string; type?: Reward["type"] }[] = [
+  { label: "全部" },
+  { label: "宠物装扮", type: "虚拟装扮" },
+  { label: "学习权益", type: "学习权益" },
+  { label: "实物奖品", type: "实体奖励" },
+  { label: "限定活动", type: "公益奖励" },
+];
+
+const REWARD_ICON_MAP: Record<string, string> = {
+  "blue-scarf": "🧣",
+  "star-hat": "🎩",
+  "green-cap": "🧢",
+  "knowledge-bag": "🎒",
+  "hint-card": "📜",
+  "priority-seat": "🎟️",
+  "forest-room": "🏠",
+  "starry-room": "🌌",
+  "wrong-question": "🎫",
+  "art-pens": "🖍️",
+  "limited-frame": "🖼️",
+  "teacher-feedback": "🎙️",
+  notebook: "📒",
+  "donate-book": "📚",
+};
+
+function rewardIcon(reward: Reward) {
+  return REWARD_ICON_MAP[reward.id] ?? (reward.type === "虚拟装扮" ? "🎁" : reward.type === "学习权益" ? "🎟️" : reward.type === "实体奖励" ? "📦" : "💝");
+}
+
 function StudentShopPage({ learner, rewards, onRedeem }: { learner: Learner; rewards: Reward[]; onRedeem: (reward: Reward) => void }) {
+  const [activeCategory, setActiveCategory] = useState("全部");
+  const selectedCategory = SHOP_CATEGORIES.find((item) => item.label === activeCategory);
+  const orderedIds = ["blue-scarf", "green-cap", "knowledge-bag", "hint-card", "priority-seat", "forest-room", "starry-room", "wrong-question", "art-pens", "limited-frame", "teacher-feedback", "notebook"];
+  const sortedRewards = [...rewards].sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+  const visibleRewards = selectedCategory?.type ? sortedRewards.filter((reward) => reward.type === selectedCategory.type) : sortedRewards;
+
   return (
-    <div className="student-page-card">
-      <StudentSectionTitle title="奖励商城" desc="使用星币兑换宠物装扮、学习权益和实体奖励。" />
-      <div className="student-function-grid">
-        {rewards.map((reward) => {
+    <div className="student-page-card student-shop-center-card">
+      <div className="student-shop-toolbar">
+        <div className="student-tabs-row shop-tabs" role="tablist" aria-label="商城分类">
+          {SHOP_CATEGORIES.map((category) => (
+            <button
+              key={category.label}
+              className={activeCategory === category.label ? "active" : ""}
+              onClick={() => setActiveCategory(category.label)}
+              type="button"
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+        <strong className="student-coin-balance">🪙 我的星币：{learner.account.stars}</strong>
+      </div>
+
+      <div className="student-reward-grid-pro">
+        {visibleRewards.map((reward) => {
           const owned = learner.ownedRewards.includes(reward.id);
+          const disabled = owned || learner.account.stars < reward.price;
           return (
-            <article className={`student-function-card ${owned ? "done" : ""}`} key={reward.id}>
-              <span>{reward.type}</span>
+            <article className={`student-reward-card-pro ${owned ? "owned" : ""}`} key={reward.id}>
+              <div className="student-reward-illustration"><span>{rewardIcon(reward)}</span></div>
               <h3>{reward.title}</h3>
-              <p>{reward.description}</p>
-              <small>{reward.price} 星币 · 库存 {reward.stock}</small>
-              <button disabled={owned} onClick={() => onRedeem(reward)}>{owned ? "已拥有" : "立即兑换"}</button>
+              <p>{reward.type === "公益奖励" ? "限定活动" : reward.type}</p>
+              <div className="student-reward-card-bottom">
+                <small><i>🪙</i>{reward.price}</small>
+                <button disabled={disabled} onClick={() => onRedeem(reward)} type="button">
+                  {owned ? "已拥有" : learner.account.stars < reward.price ? "星币不足" : "兑换"}
+                </button>
+              </div>
             </article>
           );
         })}
