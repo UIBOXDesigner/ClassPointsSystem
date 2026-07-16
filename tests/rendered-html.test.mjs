@@ -31,12 +31,13 @@ test("server-renders the learning pet MVP", async () => {
   const html = await response.text();
   assert.match(html, /<title>学伴成长计划 · 积分宠物培养系统<\/title>/i);
   assert.match(html, /培训班学员积分宠物培养系统/);
-  assert.match(html, /任务中心/);
-  assert.match(html, /宠物培养/);
-  assert.match(html, /奖励商城/);
-  assert.match(html, /智能建议/);
-  assert.match(html, /风控审计/);
+  assert.match(html, /学生端/);
   assert.match(html, /教师端/);
+  assert.match(html, /家长端/);
+  assert.match(html, /今日任务/);
+  assert.match(html, /我的宠物/);
+  assert.match(html, /奖励兑换/);
+  assert.match(html, /选择使用入口/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 

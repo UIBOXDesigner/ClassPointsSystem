@@ -131,6 +131,8 @@ type SectionId =
   | "teacher"
   | "admin";
 
+type PortalRole = "student" | "teacher" | "parent";
+
 const STORAGE_KEY = "learning-pet-mvp-v1";
 const LEVEL_STEP = 45;
 
@@ -403,19 +405,61 @@ const AUDIT_RULES = [
   { title: "补救优先", description: "普通学习中断不扣历史积分，优先发布补救任务。" },
 ];
 
-const NAV_ITEMS: { id: SectionId; label: string; hint: string }[] = [
-  { id: "overview", label: "运营总览", hint: "学习状态与成长闭环" },
-  { id: "learners", label: "学员管理", hint: "新增、搜索、编辑学员" },
-  { id: "tasks", label: "任务中心", hint: "每日、阶段、补救任务" },
-  { id: "pet", label: "宠物培养", hint: "等级、属性、互动" },
-  { id: "shop", label: "奖励商城", hint: "虚拟、权益、实体奖励" },
-  { id: "activities", label: "运营活动", hint: "赛季、共同目标、通知" },
-  { id: "reports", label: "家长报告", hint: "周报、证书、打印" },
-  { id: "insights", label: "智能建议", hint: "任务推荐、干预策略" },
-  { id: "audit", label: "风控审计", hint: "异常检测、规则模拟" },
-  { id: "ledger", label: "积分流水", hint: "成长值与星币记录" },
-  { id: "teacher", label: "教师端", hint: "批量计分与预警" },
-  { id: "admin", label: "管理看板", hint: "规则、成本、风控" },
+const SECTION_META: Record<SectionId, { label: string; hint: string }> = {
+  overview: { label: "成长概览", hint: "当前学习状态" },
+  learners: { label: "学员管理", hint: "新增、搜索、编辑学员" },
+  tasks: { label: "今日任务", hint: "签到、作业、复习" },
+  pet: { label: "我的宠物", hint: "等级、属性、互动" },
+  shop: { label: "奖励兑换", hint: "装扮、权益、实体奖励" },
+  activities: { label: "班级活动", hint: "赛季、共同目标、通知" },
+  reports: { label: "成长报告", hint: "周报、证书、教师寄语" },
+  insights: { label: "智能建议", hint: "任务推荐、干预策略" },
+  audit: { label: "风控审计", hint: "异常检测、规则模拟" },
+  ledger: { label: "积分明细", hint: "成长值与星币记录" },
+  teacher: { label: "课堂计分", hint: "批量发放与预警" },
+  admin: { label: "数据看板", hint: "规则、成本、运营指标" },
+};
+
+const ROLE_PORTALS: {
+  id: PortalRole;
+  label: string;
+  badge: string;
+  title: string;
+  description: string;
+  entrySection: SectionId;
+  sections: SectionId[];
+  actions: string[];
+}[] = [
+  {
+    id: "teacher",
+    label: "教师端",
+    badge: "上课管理",
+    title: "教师只处理学员、计分、建议和班级运营。",
+    description: "适合课前查看预警，课中快速发放积分，课后跟进补救任务和成长建议。",
+    entrySection: "teacher",
+    sections: ["teacher", "learners", "insights", "activities", "audit", "admin"],
+    actions: ["发放积分", "管理学员", "查看建议"],
+  },
+  {
+    id: "student",
+    label: "学生端",
+    badge: "学习养成",
+    title: "学生只看任务、宠物、奖励和自己的积分。",
+    description: "减少后台感，学员进入后可以直接完成今日任务、培养宠物、兑换奖励。",
+    entrySection: "tasks",
+    sections: ["overview", "tasks", "pet", "shop", "ledger"],
+    actions: ["完成任务", "培养宠物", "兑换奖励"],
+  },
+  {
+    id: "parent",
+    label: "家长端",
+    badge: "成长查看",
+    title: "家长只看过程报告、成长变化和老师反馈。",
+    description: "隐藏复杂运营操作，重点呈现出勤、作业、进步、宠物成长和阶段报告。",
+    entrySection: "reports",
+    sections: ["reports", "overview", "ledger"],
+    actions: ["看周报", "看成长", "看明细"],
+  },
 ];
 
 const ATTRIBUTE_LABELS: Record<AttributeKey, string> = {
@@ -823,7 +867,8 @@ function auditLearners(learners: Learner[]): AuditItem[] {
 export default function Home() {
   const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
-  const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [activePortal, setActivePortal] = useState<PortalRole>("student");
+  const [activeSection, setActiveSection] = useState<SectionId>("tasks");
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
 
@@ -854,6 +899,8 @@ export default function Home() {
   const selectedPet = getPet(selectedLearner.pet.typeId);
   const selectedBadges = BADGES.filter((badge) => earnedBadgeIds(selectedLearner).has(badge.id));
   const selectedRisks = riskLabels(selectedLearner);
+  const activePortalConfig = ROLE_PORTALS.find((portal) => portal.id === activePortal) ?? ROLE_PORTALS[1];
+  const visibleNavItems = activePortalConfig.sections.map((id) => ({ id, ...SECTION_META[id] }));
   const nextProgress = progressToNextLevel(
     selectedLearner.account.totalGrowth,
     selectedLearner.pet.level,
@@ -880,6 +927,13 @@ export default function Home() {
     setLearners((current) =>
       current.map((learner) => (learner.id === learnerId ? updater(learner) : learner)),
     );
+  }
+
+  function enterPortal(portalId: PortalRole) {
+    const portal = ROLE_PORTALS.find((item) => item.id === portalId) ?? ROLE_PORTALS[1];
+    setActivePortal(portal.id);
+    setActiveSection(portal.entrySection);
+    setMessage(`已进入${portal.label}：${portal.description}`);
   }
 
   function completeTask(task: Task) {
@@ -992,7 +1046,8 @@ export default function Home() {
     setLearners((current) => [...current, newLearner]);
     setSelectedLearnerId(newLearner.id);
     setTeacherTargetId(newLearner.id);
-    setActiveSection("overview");
+    setActivePortal("teacher");
+    setActiveSection("learners");
     setMessage(`已新增学员 ${newLearner.nickname}，并创建宠物 ${newLearner.pet.name}。`);
   }
 
@@ -1060,45 +1115,53 @@ export default function Home() {
               <small>培训班学员积分宠物培养系统</small>
             </div>
           </div>
-          <div className="learner-picker">
-            <label htmlFor="learner-select">当前学员</label>
-            <select
-              id="learner-select"
-              value={selectedLearnerId}
-              onChange={(event) => setSelectedLearnerId(event.target.value)}
-            >
-              {learners.map((learner) => (
-                <option key={learner.id} value={learner.id}>
-                  {learner.nickname} · {learner.className}
-                </option>
-              ))}
-            </select>
+          <div className="topbar-actions">
+            <span className="active-portal-pill">{activePortalConfig.label}</span>
+            <div className="learner-picker">
+              <label htmlFor="learner-select">当前学员</label>
+              <select
+                id="learner-select"
+                value={selectedLearnerId}
+                onChange={(event) => setSelectedLearnerId(event.target.value)}
+              >
+                {learners.map((learner) => (
+                  <option key={learner.id} value={learner.id}>
+                    {learner.nickname} · {learner.className}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </nav>
 
         <section className="hero-grid">
           <div className="hero-copy">
-            <span className="eyebrow">MVP 可运行版本</span>
-            <h1>把签到、作业、复习、互动变成宠物成长反馈。</h1>
+            <span className="eyebrow">{activePortalConfig.badge}</span>
+            <h1>{activePortalConfig.title}</h1>
             <p>
-              系统已落地双积分机制、任务中心、宠物培养、成就徽章、奖励商城、教师计分和管理看板，适合先拿一个试点班级验证规则。
+              {activePortalConfig.description}
             </p>
             <div className="hero-actions">
-              <button className="primary-button" onClick={() => setActiveSection("tasks")}>
-                去完成任务
+              <button className="primary-button" onClick={() => setActiveSection(activePortalConfig.entrySection)}>
+                进入{activePortalConfig.label}
               </button>
-              <button className="secondary-button" onClick={() => setActiveSection("teacher")}>
-                教师发放积分
+              <button className="secondary-button" onClick={resetDemo}>
+                重置演示数据
               </button>
-              <button className="secondary-button" onClick={() => setActiveSection("learners")}>
-                管理学员
-              </button>
-              <button className="secondary-button" onClick={() => setActiveSection("reports")}>
-                查看家长报告
-              </button>
-              <button className="secondary-button" onClick={() => setActiveSection("insights")}>
-                查看智能建议
-              </button>
+            </div>
+
+            <div className="portal-entry-grid" aria-label="选择使用入口">
+              {ROLE_PORTALS.map((portal) => (
+                <button
+                  key={portal.id}
+                  className={`portal-entry-card ${activePortal === portal.id ? "active" : ""}`}
+                  onClick={() => enterPortal(portal.id)}
+                >
+                  <span>{portal.badge}</span>
+                  <strong>{portal.label}</strong>
+                  <small>{portal.actions.join(" · ")}</small>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -1119,8 +1182,12 @@ export default function Home() {
       </section>
 
       <div className="workspace">
-        <aside className="side-nav" aria-label="系统模块">
-          {NAV_ITEMS.map((item) => (
+        <aside className="side-nav" aria-label={`${activePortalConfig.label}操作菜单`}>
+          <div className="side-nav-title">
+            <span>{activePortalConfig.label}</span>
+            <small>{activePortalConfig.badge}</small>
+          </div>
+          {visibleNavItems.map((item) => (
             <button
               key={item.id}
               className={activeSection === item.id ? "active" : ""}
@@ -1130,9 +1197,6 @@ export default function Home() {
               <small>{item.hint}</small>
             </button>
           ))}
-          <button className="reset-button" onClick={resetDemo}>
-            重置演示数据
-          </button>
         </aside>
 
         <section className="panel-area">

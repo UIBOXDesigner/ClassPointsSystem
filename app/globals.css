@@ -97,6 +97,23 @@ button:disabled {
   gap: 12px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.active-portal-pill {
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--green));
+  font-size: 0.9rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.2);
+}
+
 .brand-mark {
   display: grid;
   width: 46px;
@@ -224,6 +241,48 @@ h1 {
 .hero-actions {
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.portal-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.portal-entry-card {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(109, 93, 252, 0.16);
+  border-radius: 22px;
+  padding: 16px;
+  text-align: left;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 16px 34px rgba(38, 50, 77, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.portal-entry-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(79, 70, 229, 0.14);
+}
+
+.portal-entry-card.active {
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--green));
+}
+
+.portal-entry-card span,
+.portal-entry-card small {
+  color: inherit;
+  opacity: 0.82;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.portal-entry-card strong {
+  font-size: 1.18rem;
 }
 
 .primary-button,
@@ -456,6 +515,28 @@ h1 {
   padding: 12px;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: var(--shadow);
+}
+
+.side-nav-title {
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.side-nav-title span,
+.side-nav-title small {
+  display: block;
+}
+
+.side-nav-title span {
+  color: #111827;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.side-nav-title small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .side-nav button {
@@ -902,6 +983,10 @@ td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .side-nav-title {
+    grid-column: 1 / -1;
+  }
+
   .summary-grid,
   .shop-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -925,6 +1010,11 @@ td {
     flex-direction: column;
   }
 
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .topbar,
   .hero-grid {
     padding-inline: 16px;
@@ -945,6 +1035,7 @@ td {
   }
 
   .summary-grid,
+  .portal-entry-grid,
   .task-grid,
   .shop-grid,
   .badge-grid,
