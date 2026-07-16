@@ -56,6 +56,80 @@ button:disabled {
   padding: 24px 0 56px;
 }
 
+.entry-only-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px 0;
+}
+
+.entry-gate {
+  display: grid;
+  width: min(720px, 100%);
+  gap: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 36px;
+  padding: clamp(28px, 6vw, 56px);
+  text-align: center;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 198, 92, 0.34), transparent 18rem),
+    radial-gradient(circle at 88% 12%, rgba(109, 93, 252, 0.18), transparent 18rem),
+    rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.entry-brand {
+  justify-content: center;
+}
+
+.entry-gate-copy {
+  display: grid;
+  justify-items: center;
+}
+
+.entry-gate-copy h1 {
+  margin-bottom: 0;
+  font-size: clamp(2.6rem, 9vw, 5.4rem);
+}
+
+.entry-gate-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.entry-button {
+  min-height: 118px;
+  border: 0;
+  border-radius: 28px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 22px 44px rgba(38, 50, 77, 0.14);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.entry-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 56px rgba(38, 50, 77, 0.2);
+}
+
+.entry-button strong {
+  display: block;
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
+}
+
+.entry-teacher {
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+}
+
+.entry-student {
+  background: linear-gradient(135deg, #10b981, #84cc16);
+}
+
+.entry-parent {
+  background: linear-gradient(135deg, #f59e0b, #f43f5e);
+}
+
 .hero {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.82);
@@ -104,6 +178,7 @@ button:disabled {
 }
 
 .active-portal-pill {
+  border: 0;
   border-radius: 999px;
   padding: 10px 14px;
   color: white;
@@ -1210,6 +1285,25 @@ td {
     width: min(100% - 18px, 1440px);
     padding-top: 9px;
     padding-bottom: 92px;
+  }
+
+  .entry-only-shell {
+    padding: 12px 0;
+  }
+
+  .entry-gate {
+    min-height: calc(100dvh - 24px);
+    align-content: center;
+    border-radius: 28px;
+    padding: 22px;
+  }
+
+  .entry-gate-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .entry-button {
+    min-height: 96px;
   }
 
   .hero {

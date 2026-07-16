@@ -869,7 +869,7 @@ function auditLearners(learners: Learner[]): AuditItem[] {
 export default function Home() {
   const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
-  const [activePortal, setActivePortal] = useState<PortalRole>("student");
+  const [activePortal, setActivePortal] = useState<PortalRole | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
@@ -1106,6 +1106,39 @@ export default function Home() {
     setMessage("演示数据已恢复为试点班级初始状态。");
   }
 
+  if (!activePortal) {
+    return (
+      <main className="app-shell entry-only-shell">
+        <section className="entry-gate" aria-label="选择系统入口">
+          <div className="brand entry-brand">
+            <span className="brand-mark">学</span>
+            <div>
+              <strong>学伴成长计划</strong>
+              <small>培训班学员积分宠物培养系统</small>
+            </div>
+          </div>
+
+          <div className="entry-gate-copy">
+            <span className="eyebrow">选择入口</span>
+            <h1>请选择使用身份</h1>
+          </div>
+
+          <div className="entry-gate-buttons">
+            {ROLE_PORTALS.map((portal) => (
+              <button
+                key={portal.id}
+                className={`entry-button entry-${portal.id}`}
+                onClick={() => enterPortal(portal.id)}
+              >
+                <strong>{portal.label}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -1118,7 +1151,9 @@ export default function Home() {
             </div>
           </div>
           <div className="topbar-actions">
-            <span className="active-portal-pill">{activePortalConfig.label}</span>
+            <button className="active-portal-pill" onClick={() => setActivePortal(null)}>
+              切换入口
+            </button>
             <div className="learner-picker">
               <label htmlFor="learner-select">当前学员</label>
               <select

@@ -34,12 +34,9 @@ test("server-renders the learning pet MVP", async () => {
   assert.match(html, /学生端/);
   assert.match(html, /教师端/);
   assert.match(html, /家长端/);
-  assert.match(html, /今日核心数据/);
-  assert.match(html, /频道入口/);
-  assert.match(html, /今日任务/);
-  assert.match(html, /我的宠物/);
-  assert.match(html, /奖励兑换/);
-  assert.match(html, /选择使用入口/);
+  assert.match(html, /请选择使用身份/);
+  assert.match(html, /选择系统入口/);
+  assert.doesNotMatch(html, /今日核心数据|频道入口|今日任务|我的宠物|奖励兑换/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
