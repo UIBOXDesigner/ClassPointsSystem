@@ -1108,33 +1108,83 @@ export default function Home() {
 
   if (!activePortal) {
     return (
-      <main className="app-shell entry-only-shell">
-        <section className="entry-gate" aria-label="选择系统入口">
-          <div className="brand entry-brand">
-            <span className="brand-mark">学</span>
+      <main className="entry-landing">
+        <header className="entry-header">
+          <div className="brand entry-logo">
+            <span className="entry-paw" aria-hidden="true">🐾</span>
             <div>
               <strong>学伴成长计划</strong>
-              <small>培训班学员积分宠物培养系统</small>
+              <small>学员积分宠物培养系统</small>
             </div>
           </div>
+          <div className="entry-header-actions">
+            <button type="button">▣ 系统公告</button>
+            <button type="button" className="help-pill">? 帮助中心</button>
+          </div>
+        </header>
 
-          <div className="entry-gate-copy">
-            <span className="eyebrow">选择入口</span>
-            <h1>请选择使用身份</h1>
+        <section className="entry-scene" aria-label="选择系统入口">
+          <div className="entry-sky" aria-hidden="true">
+            <span className="entry-cloud cloud-one" />
+            <span className="entry-cloud cloud-two" />
+            <span className="entry-tree tree-left" />
+            <span className="entry-tree tree-right" />
+            <span className="entry-school">🏫</span>
           </div>
 
-          <div className="entry-gate-buttons">
-            {ROLE_PORTALS.map((portal) => (
-              <button
-                key={portal.id}
-                className={`entry-button entry-${portal.id}`}
-                onClick={() => enterPortal(portal.id)}
-              >
-                <strong>{portal.label}</strong>
-              </button>
-            ))}
+          <div className="entry-title-block">
+            <h1><span>学习成长</span><i>·</i><em>宠爱相伴</em></h1>
+            <p>通过学习获得积分，培养你的专属宠物，见证每一步成长！</p>
+          </div>
+
+          <div className="role-card-grid">
+            <button className="role-card student-role-card" onClick={() => enterPortal("student")}>
+              <span className="role-icon">👤</span>
+              <strong>学员入口</strong>
+              <p>登录后开始你的学习之旅<br />积累积分，培养专属宠物</p>
+              <b>进入学员端 →</b>
+              <i className="role-pet">🐶</i>
+              <div className="role-features">
+                <span>☑ 完成任务</span>
+                <span>✪ 获得积分</span>
+                <span>🐾 培养宠物</span>
+                <span>🎁 兑换奖励</span>
+              </div>
+            </button>
+
+            <button className="role-card teacher-role-card" onClick={() => enterPortal("teacher")}>
+              <span className="role-icon">🎓</span>
+              <strong>教师入口</strong>
+              <p>登录后管理班级与学员<br />布置任务，查看成长数据</p>
+              <b>进入教师端 →</b>
+              <i className="role-pet">🐱</i>
+              <div className="role-features">
+                <span>👥 班级管理</span>
+                <span>📋 任务发布</span>
+                <span>📈 学员成长</span>
+                <span>◔ 数据分析</span>
+              </div>
+            </button>
+          </div>
+
+          <button className="parent-entry-strip" onClick={() => enterPortal("parent")}>
+            <span>💚 家长入口</span>
+            <small>查看成长报告、积分明细和教师反馈</small>
+            <b>进入家长端 →</b>
+          </button>
+
+          <div className="entry-values">
+            <div><span>🛡️</span><strong>安全可靠</strong><small>数据加密存储<br />保障信息安全</small></div>
+            <div><span>🏅</span><strong>公平激励</strong><small>科学积分体系<br />鼓励持续成长</small></div>
+            <div><span>📊</span><strong>成长可视</strong><small>多维成长记录<br />见证点滴进步</small></div>
+            <div><span>🧡</span><strong>寓教于乐</strong><small>游戏化学习体验<br />激发学习兴趣</small></div>
           </div>
         </section>
+
+        <footer className="entry-footer">
+          <span>关于我们</span><i>|</i><span>使用条款</span><i>|</i><span>隐私政策</span><i>|</i><span>联系我们</span>
+          <small>© 2026 学伴成长计划 - 学员积分宠物培养系统</small>
+        </footer>
       </main>
     );
   }
