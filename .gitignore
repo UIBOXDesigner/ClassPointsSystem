@@ -43,3 +43,11 @@ next-env.d.ts
 
 # local npm cache
 .npm-cache/
+
+# local deliverables
+*.zip
+交付说明.txt
+学伴成长计划-积分宠物系统/
+
+# TypeScript cache
+tsconfig.tsbuildinfo

@@ -76,8 +76,18 @@ type Learner = {
   ledger: Ledger[];
 };
 
+type LearnerDraft = {
+  name: string;
+  nickname: string;
+  className: string;
+  course: string;
+  petType: string;
+  petName: string;
+};
+
 type SectionId =
   | "overview"
+  | "learners"
   | "tasks"
   | "pet"
   | "shop"
@@ -290,6 +300,7 @@ const REWARDS: Reward[] = [
 
 const NAV_ITEMS: { id: SectionId; label: string; hint: string }[] = [
   { id: "overview", label: "运营总览", hint: "学习状态与成长闭环" },
+  { id: "learners", label: "学员管理", hint: "新增、搜索、编辑学员" },
   { id: "tasks", label: "任务中心", hint: "每日、阶段、补救任务" },
   { id: "pet", label: "宠物培养", hint: "等级、属性、互动" },
   { id: "shop", label: "奖励商城", hint: "虚拟、权益、实体奖励" },
@@ -620,6 +631,10 @@ function classAverage(learners: Learner[], key: "attendanceRate" | "homeworkRate
   return Math.round(learners.reduce((sum, learner) => sum + learner[key], 0) / learners.length);
 }
 
+function csvCell(value: string | number) {
+  return `"${String(value).replaceAll('"', '""')}"`;
+}
+
 export default function Home() {
   const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
   const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
@@ -771,6 +786,76 @@ export default function Home() {
     setMessage("已为全班发放班级共同养成奖励：每人 10 成长值、5 星币。");
   }
 
+  function addLearner(draft: LearnerDraft) {
+    const newLearner = createLearner({
+      id: `stu-${Date.now()}`,
+      name: draft.name.trim(),
+      nickname: draft.nickname.trim() || draft.name.trim(),
+      className: draft.className.trim() || "新学员班级",
+      course: draft.course.trim() || "未设置课程",
+      petType: draft.petType,
+      petName: draft.petName.trim() || "新学伴",
+      growth: 0,
+      stars: 0,
+      streak: 0,
+      attendanceRate: 100,
+      homeworkRate: 100,
+      quizTrend: 0,
+      completedTasks: [],
+      attributes: { knowledge: 10, focus: 10, action: 10, cooperation: 10 },
+    });
+    setLearners((current) => [...current, newLearner]);
+    setSelectedLearnerId(newLearner.id);
+    setTeacherTargetId(newLearner.id);
+    setActiveSection("overview");
+    setMessage(`已新增学员 ${newLearner.nickname}，并创建宠物 ${newLearner.pet.name}。`);
+  }
+
+  function updateLearnerProfile(learnerId: string, draft: LearnerDraft) {
+    updateLearner(learnerId, (learner) => ({
+      ...learner,
+      name: draft.name.trim() || learner.name,
+      nickname: draft.nickname.trim() || learner.nickname,
+      className: draft.className.trim() || learner.className,
+      course: draft.course.trim() || learner.course,
+      pet: {
+        ...learner.pet,
+        typeId: draft.petType,
+        name: draft.petName.trim() || learner.pet.name,
+      },
+    }));
+    setMessage("学员资料已更新，当前演示数据已保存到本机浏览器。");
+  }
+
+  function exportClassData() {
+    const rows = [
+      ["学员", "昵称", "班级", "课程", "宠物", "阶段", "等级", "成长值", "可用星币", "连续学习", "出勤率", "作业率", "预警"],
+      ...learners.map((learner) => [
+        learner.name,
+        learner.nickname,
+        learner.className,
+        learner.course,
+        learner.pet.name,
+        learner.pet.stage,
+        learner.pet.level,
+        learner.account.totalGrowth,
+        learner.account.stars,
+        `${learner.streak}天`,
+        `${learner.attendanceRate}%`,
+        `${learner.homeworkRate}%`,
+        riskLabels(learner).join(" / ") || "稳定",
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `学伴成长数据-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage("已导出班级数据 CSV，可用于运营复盘或导入表格。");
+  }
+
   function resetDemo() {
     const initial = createInitialLearners();
     setLearners(initial);
@@ -820,6 +905,9 @@ export default function Home() {
               <button className="secondary-button" onClick={() => setActiveSection("teacher")}>
                 教师发放积分
               </button>
+              <button className="secondary-button" onClick={() => setActiveSection("learners")}>
+                管理学员
+              </button>
             </div>
           </div>
 
@@ -867,6 +955,21 @@ export default function Home() {
             />
           )}
 
+          {activeSection === "learners" && (
+            <LearnersPanel
+              learners={learners}
+              selectedLearnerId={selectedLearnerId}
+              onSelect={(learnerId) => {
+                setSelectedLearnerId(learnerId);
+                setTeacherTargetId(learnerId);
+                setMessage("已切换当前学员，可继续查看任务、宠物和积分流水。");
+              }}
+              onAdd={addLearner}
+              onUpdate={updateLearnerProfile}
+              onExport={exportClassData}
+            />
+          )}
+
           {activeSection === "tasks" && (
             <TasksPanel learner={selectedLearner} tasks={TASKS} onComplete={completeTask} />
           )}
@@ -898,6 +1001,7 @@ export default function Home() {
               attendanceAvg={classAverage(learners, "attendanceRate")}
               homeworkAvg={classAverage(learners, "homeworkRate")}
               redemptionRate={redemptionRate}
+              onExport={exportClassData}
             />
           )}
         </section>
@@ -1061,6 +1165,187 @@ function OverviewPanel({
   );
 }
 
+
+function LearnersPanel({
+  learners,
+  selectedLearnerId,
+  onSelect,
+  onAdd,
+  onUpdate,
+  onExport,
+}: {
+  learners: Learner[];
+  selectedLearnerId: string;
+  onSelect: (learnerId: string) => void;
+  onAdd: (draft: LearnerDraft) => void;
+  onUpdate: (learnerId: string, draft: LearnerDraft) => void;
+  onExport: () => void;
+}) {
+  const emptyDraft: LearnerDraft = {
+    name: "",
+    nickname: "",
+    className: "英语 A 班",
+    course: "青少年英语提升",
+    petType: PETS[0].id,
+    petName: "",
+  };
+  const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState<LearnerDraft>(emptyDraft);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<LearnerDraft>(emptyDraft);
+
+  const filteredLearners = learners.filter((learner) => {
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return true;
+    return [learner.name, learner.nickname, learner.className, learner.course, learner.pet.name]
+      .join(" ")
+      .toLowerCase()
+      .includes(keyword);
+  });
+
+  function updateDraft(key: keyof LearnerDraft, value: string) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateEditingDraft(key: keyof LearnerDraft, value: string) {
+    setEditingDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function startEditing(learner: Learner) {
+    setEditingId(learner.id);
+    setEditingDraft({
+      name: learner.name,
+      nickname: learner.nickname,
+      className: learner.className,
+      course: learner.course,
+      petType: learner.pet.typeId,
+      petName: learner.pet.name,
+    });
+  }
+
+  function submitNewLearner(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft.name.trim()) return;
+    onAdd(draft);
+    setDraft(emptyDraft);
+  }
+
+  return (
+    <div className="panel-stack">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">学员管理</span>
+          <h2>新增学员、搜索资料和维护宠物档案</h2>
+        </div>
+        <button className="primary-button small-button" onClick={onExport}>导出班级数据</button>
+      </div>
+
+      <div className="two-column learner-management-grid">
+        <article className="card">
+          <h3>新增学员</h3>
+          <form className="form-grid" onSubmit={submitNewLearner}>
+            <label>
+              <span>姓名</span>
+              <input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="例如：李明" required />
+            </label>
+            <label>
+              <span>昵称</span>
+              <input value={draft.nickname} onChange={(event) => updateDraft("nickname", event.target.value)} placeholder="用于榜单展示" />
+            </label>
+            <label>
+              <span>班级</span>
+              <input value={draft.className} onChange={(event) => updateDraft("className", event.target.value)} />
+            </label>
+            <label>
+              <span>课程</span>
+              <input value={draft.course} onChange={(event) => updateDraft("course", event.target.value)} />
+            </label>
+            <label>
+              <span>初始宠物</span>
+              <select value={draft.petType} onChange={(event) => updateDraft("petType", event.target.value)}>
+                {PETS.map((pet) => <option key={pet.id} value={pet.id}>{pet.emoji} {pet.name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>宠物名</span>
+              <input value={draft.petName} onChange={(event) => updateDraft("petName", event.target.value)} placeholder="例如：小星" />
+            </label>
+            <button className="primary-button form-submit" type="submit">添加到试点班</button>
+          </form>
+        </article>
+
+        <article className="card">
+          <h3>管理说明</h3>
+          <div className="ops-list">
+            <div><span>当前学员数</span><strong>{learners.length} 人</strong></div>
+            <div><span>平均成长值</span><strong>{Math.round(learners.reduce((sum, learner) => sum + learner.account.totalGrowth, 0) / learners.length)}</strong></div>
+            <div><span>预警人数</span><strong>{learners.filter((learner) => riskLabels(learner).length > 0).length} 人</strong></div>
+            <div><span>数据保存</span><strong>本机浏览器</strong></div>
+          </div>
+          <p className="soft-note">当前版本适合试点演示。正式上线时，可把这些学员资料接入数据库和登录权限。</p>
+        </article>
+      </div>
+
+      <article className="card">
+        <div className="filter-bar">
+          <label>
+            <span>搜索学员</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入姓名、昵称、班级、课程或宠物名" />
+          </label>
+          <span className="filter-summary">已显示 {filteredLearners.length} / {learners.length} 人</span>
+        </div>
+        <div className="learner-card-grid">
+          {filteredLearners.map((learner) => {
+            const petType = getPet(learner.pet.typeId);
+            const isEditing = editingId === learner.id;
+            return (
+              <div className={learner.id === selectedLearnerId ? "learner-card selected" : "learner-card"} key={learner.id}>
+                <div className="learner-card-head">
+                  <span>{petType.emoji}</span>
+                  <div>
+                    <strong>{learner.name}</strong>
+                    <small>{learner.nickname} · {learner.className}</small>
+                  </div>
+                </div>
+
+                {isEditing ? (
+                  <div className="form-grid compact-form">
+                    <label><span>姓名</span><input value={editingDraft.name} onChange={(event) => updateEditingDraft("name", event.target.value)} /></label>
+                    <label><span>昵称</span><input value={editingDraft.nickname} onChange={(event) => updateEditingDraft("nickname", event.target.value)} /></label>
+                    <label><span>班级</span><input value={editingDraft.className} onChange={(event) => updateEditingDraft("className", event.target.value)} /></label>
+                    <label><span>课程</span><input value={editingDraft.course} onChange={(event) => updateEditingDraft("course", event.target.value)} /></label>
+                    <label><span>宠物</span><select value={editingDraft.petType} onChange={(event) => updateEditingDraft("petType", event.target.value)}>{PETS.map((pet) => <option key={pet.id} value={pet.id}>{pet.emoji} {pet.name}</option>)}</select></label>
+                    <label><span>宠物名</span><input value={editingDraft.petName} onChange={(event) => updateEditingDraft("petName", event.target.value)} /></label>
+                    <div className="card-actions wide-actions">
+                      <button className="primary-button small-button" onClick={() => { onUpdate(learner.id, editingDraft); setEditingId(null); }}>保存</button>
+                      <button className="secondary-button small-button" onClick={() => setEditingId(null)}>取消</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="learner-stats">
+                      <span>Lv.{learner.pet.level}</span>
+                      <span>{learner.account.totalGrowth} 成长值</span>
+                      <span>{learner.account.stars} 星币</span>
+                    </div>
+                    <div className="mini-tags">
+                      {riskLabels(learner).length === 0 ? <span className="ok">状态稳定</span> : riskLabels(learner).map((risk) => <span key={risk}>{risk}</span>)}
+                    </div>
+                    <div className="card-actions">
+                      <button className="primary-button small-button" onClick={() => onSelect(learner.id)}>设为当前</button>
+                      <button className="secondary-button small-button" onClick={() => startEditing(learner)}>编辑资料</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </article>
+    </div>
+  );
+}
+
 function ProgressItem({
   label,
   value,
@@ -1121,6 +1406,18 @@ function TasksPanel({
   onComplete: (task: Task) => void;
 }) {
   const groups = ["每日", "每周", "阶段", "挑战", "补救"] as const;
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"全部" | Task["type"]>("全部");
+  const visibleTasks = tasks.filter((task) => {
+    const matchesType = typeFilter === "全部" || task.type === typeFilter;
+    const keyword = query.trim().toLowerCase();
+    const matchesQuery = !keyword || [task.title, task.description, task.limit, ATTRIBUTE_LABELS[task.attribute]]
+      .join(" ")
+      .toLowerCase()
+      .includes(keyword);
+    return matchesType && matchesQuery;
+  });
+
   return (
     <div className="panel-stack">
       <div className="panel-header">
@@ -1130,13 +1427,32 @@ function TasksPanel({
         </div>
         <p>核心任务绑定学习动作，重复任务会被防刷规则拦截。</p>
       </div>
-      {groups.map((group) => (
-        <section className="task-group" key={group}>
-          <h3>{group}任务</h3>
-          <div className="task-grid">
-            {tasks
-              .filter((task) => task.type === group)
-              .map((task) => {
+
+      <article className="card task-filter-card">
+        <div className="filter-bar">
+          <label>
+            <span>搜索任务</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入作业、复习、测验、合作等关键词" />
+          </label>
+          <label>
+            <span>任务类型</span>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "全部" | Task["type"])}>
+              <option value="全部">全部任务</option>
+              {groups.map((group) => <option key={group} value={group}>{group}任务</option>)}
+            </select>
+          </label>
+          <span className="filter-summary">已显示 {visibleTasks.length} / {tasks.length} 个任务</span>
+        </div>
+      </article>
+
+      {groups.map((group) => {
+        const groupTasks = visibleTasks.filter((task) => task.type === group);
+        if (groupTasks.length === 0) return null;
+        return (
+          <section className="task-group" key={group}>
+            <h3>{group}任务</h3>
+            <div className="task-grid">
+              {groupTasks.map((task) => {
                 const done = learner.completedTasks.includes(task.id);
                 return (
                   <article className={done ? "task-card done" : "task-card"} key={task.id}>
@@ -1156,9 +1472,10 @@ function TasksPanel({
                   </article>
                 );
               })}
-          </div>
-        </section>
-      ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -1415,12 +1732,14 @@ function AdminPanel({
   attendanceAvg,
   homeworkAvg,
   redemptionRate,
+  onExport,
 }: {
   learners: Learner[];
   classTaskRate: number;
   attendanceAvg: number;
   homeworkAvg: number;
   redemptionRate: number;
+  onExport: () => void;
 }) {
   const abnormalCount = learners.filter((learner) => riskLabels(learner).length > 0).length;
   return (
@@ -1430,7 +1749,10 @@ function AdminPanel({
           <span className="eyebrow">管理端数据看板</span>
           <h2>规则、成本和风险一屏管理</h2>
         </div>
-        <p>首版建议用于 30 人试点班，稳定后再扩展多校区和家长端。</p>
+        <div className="panel-actions">
+          <p>首版建议用于 30 人试点班，稳定后再扩展多校区和家长端。</p>
+          <button className="secondary-button small-button" onClick={onExport}>导出数据</button>
+        </div>
       </div>
 
       <section className="summary-grid compact">
