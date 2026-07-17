@@ -134,6 +134,7 @@ type SectionId =
 
 type PortalRole = "student" | "teacher" | "parent";
 type StudentTab = "home" | "tasks" | "pet" | "badges" | "points" | "shop" | "records" | "ranking";
+type TeacherTab = "overview" | "learners" | "tasks" | "homework" | "points" | "interaction" | "reports" | "stats" | "settings";
 
 const STORAGE_KEY = "learning-pet-mvp-v2";
 const LEVEL_STEP = 200;
@@ -929,6 +930,7 @@ export default function Home() {
   const [activePortal, setActivePortal] = useState<PortalRole | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
   const [studentTab, setStudentTab] = useState<StudentTab>("home");
+  const [teacherTab, setTeacherTab] = useState<TeacherTab>("overview");
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
 
@@ -994,6 +996,7 @@ export default function Home() {
     setActivePortal(portal.id);
     setActiveSection(portal.entrySection);
     if (portal.id === "student") setStudentTab("home");
+    if (portal.id === "teacher") setTeacherTab("overview");
     setMessage(`已进入${portal.label}：${portal.description}`);
   }
 
@@ -1267,6 +1270,29 @@ export default function Home() {
     );
   }
 
+  if (activePortal === "teacher") {
+    return (
+      <TeacherPortal
+        learners={learners}
+        selectedLearner={selectedLearner}
+        selectedLearnerId={selectedLearnerId}
+        teacherTargetId={teacherTargetId}
+        tasks={TASKS}
+        activeTab={teacherTab}
+        onTabChange={setTeacherTab}
+        onSelectLearner={(learnerId) => {
+          setSelectedLearnerId(learnerId);
+          setTeacherTargetId(learnerId);
+        }}
+        setTeacherTargetId={setTeacherTargetId}
+        onPreset={applyTeacherPreset}
+        onBatch={batchClassReward}
+        onExport={exportClassData}
+        onBack={() => setActivePortal(null)}
+      />
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -1474,6 +1500,320 @@ export default function Home() {
       </nav>
     </main>
   );
+}
+
+
+const TEACHER_CLASS_TOTAL = 32;
+const TEACHER_NAV_ITEMS: { id: TeacherTab; label: string; icon: string }[] = [
+  { id: "overview", label: "班级总览", icon: "⌂" },
+  { id: "learners", label: "学员管理", icon: "♧" },
+  { id: "tasks", label: "任务管理", icon: "▣" },
+  { id: "homework", label: "作业管理", icon: "▤" },
+  { id: "points", label: "积分管理", icon: "◈" },
+  { id: "interaction", label: "课堂互动", icon: "◎" },
+  { id: "reports", label: "成长报告", icon: "◉" },
+  { id: "stats", label: "班级数据", icon: "▥" },
+  { id: "settings", label: "系统设置", icon: "⚙" },
+];
+
+const HOMEWORK_ROWS = [
+  { title: "Unit 3 单词练习", course: "英语", deadline: "05-20 23:59", submit: "28/32", rate: "87%", status: "进行中" },
+  { title: "语法专项练习", course: "英语", deadline: "05-18 23:59", submit: "32/32", rate: "100%", status: "已完成" },
+  { title: "阅读理解练习", course: "英语", deadline: "05-15 23:59", submit: "31/32", rate: "100%", status: "已完成" },
+  { title: "听力练习", course: "英语", deadline: "05-12 23:59", submit: "30/32", rate: "100%", status: "已完成" },
+];
+
+const INTERACTION_ROWS = [
+  { time: "10:25:30", name: "李小明", type: "主动回答", content: "问题回答正确", points: "+3" },
+  { time: "10:18:45", name: "王小花", type: "主动提问", content: "提出有价值的问题", points: "+3" },
+  { time: "10:15:20", name: "邵小虎", type: "积极参与", content: "小组讨论积极", points: "+2" },
+  { time: "10:12:10", name: "张小莉", type: "帮助同学", content: "帮助同学解决问题", points: "+5" },
+  { time: "10:08:30", name: "刘子豪", type: "课堂表现", content: "专注认真听讲", points: "+2" },
+];
+
+const POINT_RULES = [
+  ["签到", "成长值", "+2", "1次", "全部", "启用"],
+  ["准时到课", "星币", "+1", "1次", "全部", "启用"],
+  ["准时到课", "成长值", "+5", "1次", "全部", "启用"],
+  ["完成课程", "成长值", "+10", "1次", "全部", "启用"],
+  ["完成作业", "成长值", "+10", "1次", "全部", "启用"],
+  ["作业优秀", "成长值", "+5", "1次", "全部", "启用"],
+  ["主动回答", "成长值", "+3", "3次", "全部", "启用"],
+  ["完成测验", "成长值", "+8", "1次", "全部", "启用"],
+];
+
+function teacherMetricData(learners: Learner[]) {
+  const issued = learners.reduce((sum, learner) => sum + learner.account.totalGrowth + learner.account.totalStars, 0);
+  return [
+    { label: "学员总数", value: `${TEACHER_CLASS_TOTAL}人`, detail: "当前班级" },
+    { label: "今日出勤", value: "28人", detail: "出勤率 87.5%" },
+    { label: "任务完成率", value: "76%", detail: "较昨日 +8%" },
+    { label: "作业提交率", value: "81%", detail: "本周均值" },
+    { label: "本周发放积分", value: issued.toLocaleString(), detail: "成长值 + 星币" },
+  ];
+}
+
+function TeacherPortal({
+  learners,
+  selectedLearner,
+  selectedLearnerId,
+  teacherTargetId,
+  tasks,
+  activeTab,
+  onTabChange,
+  onSelectLearner,
+  setTeacherTargetId,
+  onPreset,
+  onBatch,
+  onExport,
+  onBack,
+}: {
+  learners: Learner[];
+  selectedLearner: Learner;
+  selectedLearnerId: string;
+  teacherTargetId: string;
+  tasks: Task[];
+  activeTab: TeacherTab;
+  onTabChange: (tab: TeacherTab) => void;
+  onSelectLearner: (learnerId: string) => void;
+  setTeacherTargetId: (learnerId: string) => void;
+  onPreset: (targetId: string, preset: { label: string; growth: number; stars: number; attr: AttributeKey }) => void;
+  onBatch: () => void;
+  onExport: () => void;
+  onBack: () => void;
+}) {
+  const title = TEACHER_NAV_ITEMS.find((item) => item.id === activeTab)?.label ?? "教师端";
+  return (
+    <main className="teacher-shell">
+      <aside className="teacher-sidebar">
+        <div className="teacher-brand">
+          <span>🐾</span>
+          <div>
+            <strong>学伴成长计划</strong>
+            <small>教师端</small>
+          </div>
+        </div>
+
+        <nav className="teacher-nav" aria-label="教师端功能菜单">
+          {TEACHER_NAV_ITEMS.map((item) => (
+            <button key={item.id} className={activeTab === item.id ? "active" : ""} onClick={() => onTabChange(item.id)}>
+              <i>{item.icon}</i><span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="teacher-profile-card">
+          <span>👩‍🏫</span>
+          <div>
+            <strong>张老师</strong>
+            <small>英语教师</small>
+          </div>
+        </div>
+        <button className="teacher-back-button" onClick={onBack}>切换入口</button>
+      </aside>
+
+      <section className="teacher-main">
+        <div className="teacher-page-pill">{TEACHER_NAV_ITEMS.findIndex((item) => item.id === activeTab) + 1} · {title}</div>
+        <TeacherTopbar title={title} onExport={onExport} />
+        {activeTab === "overview" && <TeacherOverviewPage learners={learners} onBatch={onBatch} />}
+        {activeTab === "learners" && <TeacherLearnersPage learners={learners} selectedLearnerId={selectedLearnerId} onSelectLearner={onSelectLearner} />}
+        {activeTab === "tasks" && <TeacherTasksPage tasks={tasks} />}
+        {activeTab === "homework" && <TeacherHomeworkPage />}
+        {activeTab === "points" && <TeacherPointsPage learners={learners} teacherTargetId={teacherTargetId} setTeacherTargetId={setTeacherTargetId} onPreset={onPreset} />}
+        {activeTab === "interaction" && <TeacherInteractionPage />}
+        {activeTab === "reports" && <TeacherReportsPage learner={selectedLearner} />}
+        {activeTab === "stats" && <TeacherStatsPage learners={learners} />}
+        {activeTab === "settings" && <TeacherSettingsPage />}
+      </section>
+    </main>
+  );
+}
+
+function TeacherTopbar({ title, onExport }: { title: string; onExport: () => void }) {
+  return (
+    <header className="teacher-topbar">
+      <div className="teacher-class-selectors">
+        <strong>三年级2班</strong>
+        <select defaultValue="本学期"><option>本学期</option><option>本月</option><option>本周</option></select>
+      </div>
+      <div className="teacher-top-actions">
+        <span>2024-05-20　星期一</span>
+        <button onClick={onExport}>导出</button>
+        <button aria-label="通知">🔔</button>
+      </div>
+    </header>
+  );
+}
+
+function TeacherOverviewPage({ learners, onBatch }: { learners: Learner[]; onBatch: () => void }) {
+  const activities = [
+    ["🔥", "李小明的宠物“勇气犬”升级 Lv.15", "1小时前"],
+    ["✅", "王小花完成了 每日复习 任务", "2小时前"],
+    ["💬", "邵小虎获得了“连续学习3天”徽章", "3小时前"],
+    ["📘", "班级完成了“挑战英语角”阶段目标", "5小时前"],
+  ];
+  return (
+    <div className="teacher-page-stack">
+      <section className="teacher-metric-grid">
+        {teacherMetricData(learners).map((metric) => <TeacherMetricCard key={metric.label} {...metric} />)}
+      </section>
+      <section className="teacher-two-grid">
+        <article className="teacher-card">
+          <h3>班级成长动态</h3>
+          <div className="teacher-activity-list">
+            {activities.map((item) => <div key={item[1]}><span>{item[0]}</span><strong>{item[1]}</strong><small>{item[2]}</small></div>)}
+          </div>
+        </article>
+        <article className="teacher-card">
+          <div className="teacher-card-head"><h3>本周积分趋势</h3><small>成长积分　共创积分</small></div>
+          <div className="teacher-line-chart" aria-label="本周积分趋势">
+            {[35, 52, 74, 76, 83, 61, 88, 98].map((value, index) => <i key={index} style={{ ["--point" as string]: `${value}%` }} />)}
+            <b style={{ ["--bar" as string]: "32%" }} /><b style={{ ["--bar" as string]: "58%" }} /><b style={{ ["--bar" as string]: "44%" }} /><b style={{ ["--bar" as string]: "38%" }} /><b style={{ ["--bar" as string]: "73%" }} />
+          </div>
+        </article>
+      </section>
+      <section className="teacher-pending-grid">
+        <button onClick={onBatch}><span>📅</span><strong>待批改作业</strong><b>18份</b></button>
+        <button><span>📋</span><strong>待审核互动</strong><b>9条</b></button>
+        <button><span>❤️</span><strong>未完成任务</strong><b>12个</b></button>
+        <button><span>⚠️</span><strong>预警学员</strong><b>3人</b></button>
+      </section>
+    </div>
+  );
+}
+
+function TeacherMetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return <article className="teacher-metric-card"><small>{label}</small><strong>{value}</strong><span>{detail}</span></article>;
+}
+
+function TeacherLearnersPage({ learners, selectedLearnerId, onSelectLearner }: { learners: Learner[]; selectedLearnerId: string; onSelectLearner: (learnerId: string) => void }) {
+  return (
+    <div className="teacher-card teacher-table-card">
+      <div className="teacher-card-toolbar"><h2>三年级2班 <small>（32人）</small></h2><input placeholder="搜索学员名称/学号" /><button>全部状态</button><button>筛选</button></div>
+      <div className="teacher-table-wrap">
+        <table className="teacher-table">
+          <thead><tr><th>学员</th><th>等级/宠物</th><th>成长值</th><th>星币</th><th>连续学习</th><th>本周表现</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>{learners.map((learner, index) => {
+            const pet = getPet(learner.pet.typeId);
+            const risks = riskLabels(learner);
+            return <tr key={learner.id} className={selectedLearnerId === learner.id ? "selected" : ""}>
+              <td><button className="teacher-avatar-name" onClick={() => onSelectLearner(learner.id)}><span>{["👦", "👧", "🧒", "👩", "👨"][index % 5]}</span><strong>{learner.name}</strong></button></td>
+              <td><span className="teacher-pet-cell">{pet.emoji}<small>{learner.pet.name}<br />Lv.{learner.pet.level}</small></span></td>
+              <td>{learner.account.totalGrowth}</td><td>{learner.account.stars}</td><td>{learner.streak}天</td>
+              <td><span className="teacher-stars">{learner.homeworkRate > 90 ? "⭐⭐⭐" : learner.homeworkRate > 80 ? "⭐⭐" : "⭐"}</span></td>
+              <td><b className={risks.length ? "danger" : "ok"}>{risks.length ? "预警" : "正常"}</b></td>
+              <td><button>详情</button><button>积分</button><button>更多</button></td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>
+      <footer className="teacher-table-footer">共 32 条　‹　1　2　3　4　›　10条/页</footer>
+    </div>
+  );
+}
+
+function TeacherTasksPage({ tasks }: { tasks: Task[] }) {
+  const [activeType, setActiveType] = useState<Task["type"]>("每日");
+  const taskTabs: { label: string; type: Task["type"] }[] = [
+    { label: "每日任务", type: "每日" }, { label: "每周任务", type: "每周" }, { label: "课程任务", type: "阶段" }, { label: "阶段任务", type: "挑战" }, { label: "补救任务", type: "补救" },
+  ];
+  const visible = tasks.filter((task) => task.type === activeType);
+  return (
+    <div className="teacher-card teacher-table-card">
+      <div className="teacher-tabs-toolbar"><div>{taskTabs.map((tab) => <button key={tab.label} className={activeType === tab.type ? "active" : ""} onClick={() => setActiveType(tab.type)}>{tab.label}</button>)}</div><button className="teacher-primary-btn">＋ 新建任务</button></div>
+      <div className="teacher-table-wrap">
+        <table className="teacher-table"><thead><tr><th>任务名称</th><th>任务类型</th><th>适用对象</th><th>奖励/星币</th><th>完成方式</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>{visible.map((task) => <tr key={task.id}><td>{task.title}</td><td>{task.type}任务</td><td>全班</td><td>+{task.growth} / +{task.stars}</td><td>{task.type === "每日" ? "自动完成" : "教师确认"}</td><td><b className="ok">启用</b></td><td><button>编辑</button><button>复制</button><button>更多</button></td></tr>)}</tbody></table>
+      </div>
+    </div>
+  );
+}
+
+function TeacherHomeworkPage() {
+  return (
+    <div className="teacher-page-stack">
+      <article className="teacher-card teacher-table-card">
+        <div className="teacher-tabs-toolbar"><div><button className="active">我布置的作业</button><button>作业统计</button><button>作业批改记录</button></div><button className="teacher-primary-btn">＋ 布置作业</button></div>
+        <div className="teacher-filter-row"><select><option>全部班级</option></select><select><option>全部课程</option></select><span>2024-05-01 ~ 2024-05-20</span><input placeholder="搜索作业名称" /></div>
+        <table className="teacher-table"><thead><tr><th>作业名称</th><th>课程</th><th>截止时间</th><th>提交/应交</th><th>批改进度</th><th>状态</th><th>操作</th></tr></thead><tbody>{HOMEWORK_ROWS.map((row) => <tr key={row.title}><td>{row.title}</td><td>{row.course}</td><td>{row.deadline}</td><td>{row.submit}</td><td><b className="ok">{row.rate}</b></td><td>{row.status}</td><td><button>查看</button><button>批改</button><button>更多</button></td></tr>)}</tbody></table>
+      </article>
+      <section className="teacher-two-grid">
+        <article className="teacher-card"><h3>作业提交概况</h3><div className="teacher-homework-overview"><div className="teacher-donut" style={{ ["--score" as string]: "86%" }}><span>提交率<br /><b>86%</b></span></div><div><p><b className="ok-dot" />已提交 28人</p><p><b className="warn-dot" />未提交 4人</p></div></div></article>
+        <article className="teacher-card"><h3>近六日提交趋势</h3><div className="teacher-bar-chart">{[54, 62, 92, 70, 66, 52].map((value, index) => <span key={index}><i style={{ height: `${value}%` }} /><small>05-{15 + index}</small></span>)}</div></article>
+      </section>
+    </div>
+  );
+}
+
+function TeacherPointsPage({ learners, teacherTargetId, setTeacherTargetId, onPreset }: { learners: Learner[]; teacherTargetId: string; setTeacherTargetId: (learnerId: string) => void; onPreset: (targetId: string, preset: { label: string; growth: number; stars: number; attr: AttributeKey }) => void }) {
+  const target = learners.find((learner) => learner.id === teacherTargetId) ?? learners[0];
+  const [points, setPoints] = useState(10);
+  const quickRewards = [
+    { icon: "🌿", label: "课堂表现", growth: 5, stars: 2, attr: "focus" as AttributeKey },
+    { icon: "📘", label: "作业优秀", growth: 10, stars: 5, attr: "action" as AttributeKey },
+    { icon: "💬", label: "积极发言", growth: 8, stars: 3, attr: "cooperation" as AttributeKey },
+    { icon: "👥", label: "追踪奖励", growth: 10, stars: 4, attr: "knowledge" as AttributeKey },
+    { icon: "🔥", label: "帮助同学", growth: 5, stars: 3, attr: "cooperation" as AttributeKey },
+    { icon: "🎁", label: "其他奖励", growth: 3, stars: 1, attr: "focus" as AttributeKey },
+  ];
+  return (
+    <div className="teacher-points-layout">
+      <article className="teacher-card teacher-score-form">
+        <div className="teacher-tabs-toolbar"><div><button className="active">积分发放</button><button>积分记录</button><button>积分规则</button></div></div>
+        <label>选择学员<select value={teacherTargetId} onChange={(event) => setTeacherTargetId(event.target.value)}>{learners.map((learner) => <option key={learner.id} value={learner.id}>{learner.name}</option>)}</select></label>
+        <div className="teacher-choice-row"><button className="active">成长值</button><button>星币</button></div>
+        <div className="teacher-counter"><button onClick={() => setPoints(Math.max(1, points - 1))}>−</button><strong>{points}</strong><button onClick={() => setPoints(points + 1)}>＋</button></div>
+        <label>行为类型<select><option>课堂表现</option><option>作业优秀</option><option>主动回答</option></select></label>
+        <label>备注<textarea defaultValue="课堂回答积极，表现优秀！" /></label>
+        <button className="teacher-primary-btn" onClick={() => onPreset(target.id, { label: "手动积分", growth: points, stars: Math.max(1, Math.round(points / 2)), attr: "knowledge" })}>发放积分</button>
+      </article>
+      <section className="teacher-card"><h3>快速奖励</h3><div className="teacher-quick-grid">{quickRewards.map((reward) => <button key={reward.label} onClick={() => onPreset(target.id, reward)}><span>{reward.icon}</span><strong>{reward.label}</strong><small>+{reward.growth}成长值</small></button>)}</div><h3>最近发放记录</h3><div className="teacher-mini-records">{target.ledger.slice(0, 4).map((item) => <div key={item.id}><span>👦</span><strong>{target.name}</strong><small>{item.source}　+{item.growthDelta}成长值</small><em>{item.date}</em></div>)}</div></section>
+    </div>
+  );
+}
+
+function TeacherInteractionPage() {
+  return (
+    <div className="teacher-page-stack">
+      <article className="teacher-card teacher-table-card"><div className="teacher-tabs-toolbar"><div><button className="active">互动记录</button><button>互动统计</button></div><button>导出</button></div><div className="teacher-filter-row"><select><option>全部课程</option></select><span>2024-05-20</span><input placeholder="搜索内容或学员" /></div><table className="teacher-table"><thead><tr><th>时间</th><th>学员</th><th>互动类型</th><th>内容</th><th>积分</th><th>操作人</th></tr></thead><tbody>{INTERACTION_ROWS.map((row) => <tr key={row.time}><td>{row.time}</td><td>{row.name}</td><td>{row.type}</td><td>{row.content}</td><td>{row.points}</td><td>张老师</td></tr>)}</tbody></table></article>
+      <section className="teacher-stat-strip"><TeacherSmallStat label="互动总数" value="23次" /><TeacherSmallStat label="主动回答" value="8次" /><TeacherSmallStat label="主动提问" value="5次" /><TeacherSmallStat label="帮助同学" value="3次" /><TeacherSmallStat label="课堂表现" value="7次" /></section>
+    </div>
+  );
+}
+
+function TeacherReportsPage({ learner }: { learner: Learner }) {
+  const radarPoints = "50% 8%, 78% 35%, 70% 74%, 36% 82%, 16% 42%";
+  return (
+    <div className="teacher-report-layout teacher-card">
+      <div className="teacher-report-profile"><span>👦</span><h3>{learner.name}</h3><small>{learner.pet.name} · Lv.{learner.pet.level}</small><em>报告日期：2024-05-01 ~ 2024-05-20</em></div>
+      <div className="teacher-radar-card"><div className="teacher-radar"><i style={{ clipPath: `polygon(${radarPoints})` }} /></div><div className="teacher-radar-labels"><span>知识 {learner.pet.knowledge}</span><span>行动 {learner.pet.action}</span><span>专注 {learner.pet.focus}</span><span>合作 {learner.pet.cooperation}</span></div></div>
+      <div className="teacher-report-summary"><h3>学习表现</h3>{[["出勤率", "95%", "优秀"], ["作业提交率", "100%", "优秀"], ["课堂互动", "18次", "良好"], ["测验平均分", "87分", "优秀"], ["连续学习天数", `${learner.streak}天`, "优秀"]].map((item) => <p key={item[0]}><span>{item[0]}</span><strong>{item[1]}</strong><b>{item[2]}</b></p>)}<h3>教师评语</h3><blockquote>学习态度认真，思维活跃，继续加油！</blockquote><button>下载报告</button><button className="teacher-primary-btn">发送给家长</button></div>
+    </div>
+  );
+}
+
+function TeacherStatsPage({ learners }: { learners: Learner[] }) {
+  const totalGrowth = learners.reduce((sum, learner) => sum + learner.account.totalGrowth, 0);
+  return (
+    <div className="teacher-page-stack">
+      <section className="teacher-metric-grid compact"><TeacherMetricCard label="平均出勤率" value="92%" detail="+5%" /><TeacherMetricCard label="平均作业提交率" value="85%" detail="+8%" /><TeacherMetricCard label="课堂互动次数" value="456次" detail="+12%" /><TeacherMetricCard label="人均成长值" value={Math.round(totalGrowth / learners.length).toLocaleString()} detail="+120" /><TeacherMetricCard label="人均星币" value="568" detail="+45" /></section>
+      <section className="teacher-two-grid"><article className="teacher-card"><h3>成长值分布</h3><div className="teacher-pie-row"><div className="teacher-pie" /><ul><li>1500以上　8人</li><li>1000-1500　12人</li><li>500-1000　8人</li><li>500以下　4人</li></ul></div></article><article className="teacher-card"><h3>连续学习天数分布</h3><div className="teacher-bar-chart tall">{[22, 48, 66, 88, 100, 62].map((value, index) => <span key={index}><i style={{ height: `${value}%` }} /><small>{["1-2天", "3-4天", "5-6天", "7-10天", "10天以上", ""] [index]}</small></span>)}</div></article></section>
+      <article className="teacher-card"><h3>趋势分析</h3><div className="teacher-trend-lines"><span className="blue" /><span className="orange" /><span className="green" /></div></article>
+    </div>
+  );
+}
+
+function TeacherSettingsPage() {
+  return (
+    <div className="teacher-settings-layout">
+      <aside className="teacher-settings-menu"><strong>系统设置</strong>{["基础设置", "积分规则", "宠物设置", "任务模板", "奖励管理", "权限管理", "操作日志"].map((item, index) => <button className={index === 1 ? "active" : ""} key={item}>{item}</button>)}</aside>
+      <section className="teacher-card teacher-table-card"><h2>积分规则列表</h2><table className="teacher-table"><thead><tr><th>行为类型</th><th>积分类型</th><th>积分数值</th><th>每日上限</th><th>适用范围</th><th>状态</th><th>操作</th></tr></thead><tbody>{POINT_RULES.map((row) => <tr key={row.join("-")}>{row.map((cell, index) => <td key={index}>{index === 5 ? <b className="ok">{cell}</b> : cell}</td>)}<td><button>编辑</button></td></tr>)}</tbody></table></section>
+    </div>
+  );
+}
+
+function TeacherSmallStat({ label, value }: { label: string; value: string }) {
+  return <article><span>▣</span><strong>{value}</strong><small>{label}</small></article>;
 }
 
 function StudentPortal({
