@@ -931,6 +931,7 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
   const [studentTab, setStudentTab] = useState<StudentTab>("home");
   const [teacherTab, setTeacherTab] = useState<TeacherTab>("overview");
+  const [showStudentOnboarding, setShowStudentOnboarding] = useState(false);
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
   const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
 
@@ -995,8 +996,14 @@ export default function Home() {
     const portal = ROLE_PORTALS.find((item) => item.id === portalId) ?? ROLE_PORTALS[1];
     setActivePortal(portal.id);
     setActiveSection(portal.entrySection);
-    if (portal.id === "student") setStudentTab("home");
-    if (portal.id === "teacher") setTeacherTab("overview");
+    if (portal.id === "student") {
+      setStudentTab("home");
+      setShowStudentOnboarding(true);
+    }
+    if (portal.id === "teacher") {
+      setTeacherTab("overview");
+      setShowStudentOnboarding(false);
+    }
     setMessage(`已进入${portal.label}：${portal.description}`);
   }
 
@@ -1168,6 +1175,38 @@ export default function Home() {
     setMessage("演示数据已恢复为试点班级初始状态。");
   }
 
+
+  function completeStudentOnboarding(studentName: string, petTypeId: string) {
+    const safeName = studentName.trim() || selectedLearner.name;
+    const pet = getPet(petTypeId);
+    updateLearner(selectedLearner.id, (learner) => ({
+      ...learner,
+      name: safeName,
+      nickname: safeName.slice(-2) || safeName,
+      pet: {
+        ...learner.pet,
+        typeId: pet.id,
+        name: pet.name,
+        stage: "幼年期",
+        mood: "刚刚孵化",
+      },
+      ledger: [
+        {
+          id: `${learner.id}-hatch-${Date.now()}`,
+          date: formatNow(),
+          source: "宠物蛋孵化",
+          note: `选择${pet.name}，开启学伴成长计划`,
+          growthDelta: 0,
+          starsDelta: 0,
+        },
+        ...learner.ledger,
+      ].slice(0, 30),
+    }));
+    setStudentTab("home");
+    setShowStudentOnboarding(false);
+    setMessage(`${safeName} 已完成入学信息，${pet.name} 已成功孵化。`);
+  }
+
   if (!activePortal) {
     return (
       <main className="entry-landing">
@@ -1251,6 +1290,19 @@ export default function Home() {
     );
   }
 
+  if (activePortal === "student" && showStudentOnboarding) {
+    return (
+      <StudentOnboardingPage
+        learner={selectedLearner}
+        onComplete={completeStudentOnboarding}
+        onBack={() => {
+          setShowStudentOnboarding(false);
+          setActivePortal(null);
+        }}
+      />
+    );
+  }
+
   if (activePortal === "student") {
     return (
       <StudentPortal
@@ -1265,7 +1317,10 @@ export default function Home() {
         onCompleteTask={completeTask}
         onInteract={interactPet}
         onRedeem={redeemReward}
-        onBack={() => setActivePortal(null)}
+        onBack={() => {
+          setShowStudentOnboarding(false);
+          setActivePortal(null);
+        }}
       />
     );
   }
@@ -1814,6 +1869,139 @@ function TeacherSettingsPage() {
 
 function TeacherSmallStat({ label, value }: { label: string; value: string }) {
   return <article><span>▣</span><strong>{value}</strong><small>{label}</small></article>;
+}
+
+
+const ONBOARDING_PETS = [
+  {
+    id: "dog",
+    eggClass: "dog",
+    title: "勇气犬蛋",
+    description: "勇敢热情，充满活力\n陪伴你勇敢探索世界",
+    bonus: "行动力 +10%",
+  },
+  {
+    id: "cat",
+    eggClass: "cat",
+    title: "智慧猫蛋",
+    description: "聪明好奇，善于思考\n陪伴你学习新知识",
+    bonus: "知识值 +10%",
+  },
+  {
+    id: "rabbit",
+    eggClass: "rabbit",
+    title: "专注兔蛋",
+    description: "温和专注，坚持不懈\n陪伴你养成好习惯",
+    bonus: "专注值 +10%",
+  },
+  {
+    id: "fox",
+    eggClass: "fox",
+    title: "探索狐蛋",
+    description: "好奇机灵，喜欢探索\n陪伴你发现新世界",
+    bonus: "好奇心 +10%",
+  },
+  {
+    id: "bear",
+    eggClass: "bear",
+    title: "合作熊蛋",
+    description: "友善可靠，乐于分享\n陪伴你与伙伴成长",
+    bonus: "合作值 +10%",
+  },
+];
+
+function StudentOnboardingPage({
+  learner,
+  onComplete,
+  onBack,
+}: {
+  learner: Learner;
+  onComplete: (studentName: string, petTypeId: string) => void;
+  onBack: () => void;
+}) {
+  const [studentName, setStudentName] = useState(learner.name || "");
+  const [selectedEgg, setSelectedEgg] = useState(learner.pet.typeId || "dog");
+
+  return (
+    <main className="onboarding-shell">
+      <header className="onboarding-header">
+        <div className="onboarding-brand">
+          <span>🐾</span>
+          <div>
+            <strong>学伴成长计划</strong>
+            <small>学员积分宠物培养系统</small>
+          </div>
+        </div>
+        <button type="button" onClick={onBack}>↩ 返回登录</button>
+      </header>
+
+      <section className="onboarding-scene" aria-label="学员入学信息">
+        <div className="onboarding-bg" aria-hidden="true">
+          <span className="onboarding-house">🏡</span>
+          <span className="onboarding-tree left" />
+          <span className="onboarding-tree right" />
+          <span className="onboarding-flower one">🌸</span>
+          <span className="onboarding-flower two">🌼</span>
+        </div>
+
+        <div className="onboarding-card">
+          <div className="onboarding-title">
+            <h1>欢迎加入<span>学伴成长计划！</span></h1>
+            <p>填写你的信息，选择一枚宠物蛋，开启你的成长之旅吧！</p>
+          </div>
+
+          <div className="onboarding-form-panel">
+            <section className="onboarding-step">
+              <h2><b>1</b>填写你的姓名</h2>
+              <label htmlFor="student-onboarding-name">你的姓名</label>
+              <div className="onboarding-input-wrap">
+                <span>♙</span>
+                <input
+                  id="student-onboarding-name"
+                  value={studentName}
+                  onChange={(event) => setStudentName(event.target.value)}
+                  placeholder="请输入你的姓名"
+                />
+              </div>
+              <small>姓名将用于你的成长记录和证书</small>
+            </section>
+
+            <section className="onboarding-step pet-choice-step">
+              <h2><b>2</b>选择你的宠物蛋</h2>
+              <p>每只宠物都有独特的性格和陪伴能力</p>
+              <div className="egg-choice-grid">
+                {ONBOARDING_PETS.map((pet) => {
+                  const active = selectedEgg === pet.id;
+                  return (
+                    <button
+                      key={pet.id}
+                      type="button"
+                      className={`egg-choice-card ${active ? "active" : ""}`}
+                      onClick={() => setSelectedEgg(pet.id)}
+                    >
+                      {active && <i className="egg-check">✓</i>}
+                      <span className={`onboard-egg ${pet.eggClass}`}><em /><em /><em /></span>
+                      <strong>{pet.title}</strong>
+                      <small>{pet.description.split("\n").map((line) => <span key={line}>{line}</span>)}</small>
+                      <b>{pet.bonus}</b>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="onboarding-tip">▣ 选择后可以在宠物信息中随时查看宠物特性哦~</div>
+            </section>
+          </div>
+
+          <div className="onboarding-submit-wrap">
+            <button type="button" onClick={() => onComplete(studentName, selectedEgg)}>
+              <span>🥚</span> 孵化我的宠物蛋
+            </button>
+            <small>孵化后即可开始你的成长之旅！</small>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 function StudentPortal({
