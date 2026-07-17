@@ -924,31 +924,36 @@ function auditLearners(learners: Learner[]): AuditItem[] {
   });
 }
 
+function readInitialLearners() {
+  if (typeof window === "undefined") return createInitialLearners();
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+  if (!saved) return createInitialLearners();
+  try {
+    const parsed = JSON.parse(saved) as Learner[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : createInitialLearners();
+  } catch {
+    window.localStorage.removeItem(STORAGE_KEY);
+    return createInitialLearners();
+  }
+}
+
+function createInitialAppState() {
+  const initialLearners = readInitialLearners();
+  const initialLearnerId = initialLearners[0]?.id ?? "stu-001";
+  return { initialLearners, initialLearnerId };
+}
+
 export default function Home() {
-  const [learners, setLearners] = useState<Learner[]>(createInitialLearners);
-  const [selectedLearnerId, setSelectedLearnerId] = useState("stu-001");
+  const [initialState] = useState(createInitialAppState);
+  const [learners, setLearners] = useState<Learner[]>(initialState.initialLearners);
+  const [selectedLearnerId, setSelectedLearnerId] = useState(initialState.initialLearnerId);
   const [activePortal, setActivePortal] = useState<PortalRole | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("roleHome");
   const [studentTab, setStudentTab] = useState<StudentTab>("home");
   const [teacherTab, setTeacherTab] = useState<TeacherTab>("overview");
   const [showStudentOnboarding, setShowStudentOnboarding] = useState(false);
   const [message, setMessage] = useState("已载入试点班级数据，可直接体验任务、积分和宠物成长。");
-  const [teacherTargetId, setTeacherTargetId] = useState("stu-001");
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as Learner[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setLearners(parsed);
-        setSelectedLearnerId(parsed[0].id);
-        setTeacherTargetId(parsed[0].id);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
+  const [teacherTargetId, setTeacherTargetId] = useState(initialState.initialLearnerId);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(learners));
@@ -1187,7 +1192,7 @@ export default function Home() {
         ...learner.pet,
         typeId: pet.id,
         name: pet.name,
-        stage: "幼年期",
+        stage: stageFromLevel(learner.pet.level),
         mood: "刚刚孵化",
       },
       ledger: [
@@ -1689,6 +1694,7 @@ function TeacherTopbar({ title, onExport }: { title: string; onExport: () => voi
     <header className="teacher-topbar">
       <div className="teacher-class-selectors">
         <strong>三年级2班</strong>
+        <span>{title}</span>
         <select defaultValue="本学期"><option>本学期</option><option>本月</option><option>本周</option></select>
       </div>
       <div className="teacher-top-actions">
@@ -2119,7 +2125,7 @@ function StudentDashboard({
   onCompleteTask: (task: Task) => void;
 }) {
   const todayTasks = ["daily-checkin", "class-practice", "review-task", "active-answer"]
-    .map((id) => taskById(id))
+    .map((id) => tasks.find((task) => task.id === id))
     .filter(Boolean) as Task[];
   const progress = progressToNextLevel(learner.account.totalGrowth, learner.pet.level);
 

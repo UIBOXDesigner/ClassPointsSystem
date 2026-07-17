@@ -87,3 +87,28 @@ test("removes disposable starter preview and skeleton dependency", async () => {
   assert.doesNotMatch(layout, /Starter Project|codex-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });
+
+test("wires the complete role architecture flow", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  for (const role of ["student", "teacher", "parent"]) {
+    assert.match(page, new RegExp(`enterPortal\\("${role}"\\)`));
+  }
+
+  assert.match(page, /setShowStudentOnboarding\(true\)/);
+  assert.match(page, /onComplete=\{completeStudentOnboarding\}/);
+  assert.match(page, /setShowStudentOnboarding\(false\)/);
+  assert.match(page, /stage: stageFromLevel\(learner\.pet\.level\)/);
+
+  for (const tab of ["overview", "learners", "tasks", "homework", "points", "interaction", "reports", "stats", "settings"]) {
+    assert.match(page, new RegExp(`id: "${tab}"`));
+    assert.match(page, new RegExp(`activeTab === "${tab}"`));
+  }
+
+  for (const tab of ["home", "tasks", "pet", "badges", "points", "shop", "records", "ranking"]) {
+    assert.match(page, new RegExp(`id: "${tab}"`));
+  }
+
+  assert.match(page, /readInitialLearners/);
+  assert.match(page, /createInitialAppState/);
+});

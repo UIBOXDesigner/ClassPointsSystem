@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "学伴成长计划-积分宠物系统/**",
     "next-env.d.ts",
   ]),
 ]);
