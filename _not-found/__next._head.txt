@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[97367,["/ClassPointsSystem/_next/static/chunks/0dbhjjzl8qfwv.js"],"ViewportBoundary"]
+3:I[97367,["/ClassPointsSystem/_next/static/chunks/0dbhjjzl8qfwv.js"],"MetadataBoundary"]
+4:"$Sreact.suspense"
+5:I[27201,["/ClassPointsSystem/_next/static/chunks/0dbhjjzl8qfwv.js"],"IconMark"]
+0:{"rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","div",null,{"hidden":true,"children":["$","$L3",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"学伴成长计划 · 积分宠物培养系统"}],["$","meta","1",{"name":"description","content":"培训班学员积分、任务、宠物成长、奖励商城和教师管理 MVP。"}],["$","link","2",{"rel":"shortcut icon","href":"/ClassPointsSystem/favicon.svg"}],["$","link","3",{"rel":"icon","href":"/ClassPointsSystem/favicon.svg"}],["$","$L5","4",{}]]}]}]}],null]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"fsT7bW6SS5PmcaFYdaEdW"}
